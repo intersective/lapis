@@ -4,7 +4,9 @@
  */
 class SecDocBehavior extends ModelBehavior {
 
-	protected $_defaults = array();
+	protected $_defaults = array(
+		'column' => 'document'
+	);
 	protected $_types = array('string', 'number', 'boolean'); // Default: string
 
 	public function setup(Model $Model, $settings = array()) {
@@ -25,7 +27,7 @@ class SecDocBehavior extends ModelBehavior {
 		// TODO: data type handling
 		// TODO: Encryption
 
-		$Model->data[$Model->alias]['document'] = json_encode($document);
+		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($document);
 		return true;
 	}
 
