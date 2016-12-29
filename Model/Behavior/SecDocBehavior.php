@@ -7,7 +7,7 @@ class SecDocBehavior extends ModelBehavior {
 	protected $_defaults = array(
 		'column' => 'document'
 	);
-	protected $_types = array('string', 'number', 'boolean'); // Default: string
+	protected $_types = array('inherit', 'string', 'number', 'boolean');
 
 	public function setup(Model $Model, $settings = array()) {
 		$this->schema[$Model->alias] = $this->_normalizeSchema($Model->documentSchema);
@@ -19,16 +19,32 @@ class SecDocBehavior extends ModelBehavior {
 
 		foreach ($Model->data[$Model->alias] as $field => $value) {
 			if (isset($this->schema[$Model->alias][$field])) {
-				$document[$field] = $value;
+				$document[$field] = $this->_handleType($value, $this->schema[$Model->alias][$field]);
 				unset($Model->data[$Model->alias][$field]);
 			}
 		}
 
-		// TODO: data type handling
 		// TODO: Encryption
 
 		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($document);
 		return true;
+	}
+
+	protected function _handleType($value, $type = 'string') {
+		switch ($type) {
+			case 'boolean':
+				return (bool)$value;
+				break;
+			case 'number':
+				return $value + 0; // reliably casting to either int or float
+				break;
+			case 'string':
+				return (string)$value;
+				break;
+			case 'inherit':
+			default:
+				return $value;
+		}
 	}
 
 	/**
@@ -56,7 +72,7 @@ class SecDocBehavior extends ModelBehavior {
 			) {
 				$schema[$field] = $documentSchema[$field];
 			} else {
-				$schema[$field] = 'string';
+				$schema[$field] = 'inherit'; // non-enforcing, not type-casted
 			}
 		}
 		return $schema;
