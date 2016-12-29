@@ -8,13 +8,25 @@ class SecDocBehavior extends ModelBehavior {
 	protected $_types = array('string', 'number', 'boolean'); // Default: string
 
 	public function setup(Model $Model, $settings = array()) {
-		$this->documentSchema = $this->_normalizeSchema($Model->documentSchema);
+		$this->schema[$Model->alias] = $this->_normalizeSchema($Model->documentSchema);
 		$this->settings[$Model->alias] = array_merge($this->_defaults, $settings);
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
-		debug($Model->data);
-		debug('hey');
+		$document = array();
+
+		foreach ($Model->data[$Model->alias] as $field => $value) {
+			if (isset($this->schema[$Model->alias][$field])) {
+				$document[$field] = $value;
+				unset($Model->data[$Model->alias][$field]);
+			}
+		}
+
+		// TODO: data type handling
+		// TODO: Encryption
+
+		$Model->data[$Model->alias]['document'] = json_encode($document);
+		return true;
 	}
 
 	/**
@@ -35,7 +47,6 @@ class SecDocBehavior extends ModelBehavior {
 
 		// Normalized schema
 		$schema = array();
-
 		foreach ($fields as $field) {
 			if (
 				isset($documentSchema[$field]) &&
@@ -46,8 +57,6 @@ class SecDocBehavior extends ModelBehavior {
 				$schema[$field] = 'string';
 			}
 		}
-
-		debug($fields);
-		debug($schema);
+		return $schema;
 	}
 }
