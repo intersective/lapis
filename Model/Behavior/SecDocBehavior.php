@@ -30,6 +30,23 @@ class SecDocBehavior extends ModelBehavior {
 		return true;
 	}
 
+	/**
+	 * Extract secured document columns into conventional document columns
+	 */
+	public function afterFind(Model $Model, $results, $primary = false) {
+		$docColumn = $this->settings[$Model->alias]['column'];
+		foreach ($results as $key => $row) {
+			if (array_key_exists($docColumn, $row[$Model->alias])) {
+				$docData = json_decode($results[$key][$Model->alias][$docColumn], true);
+				if (is_array($docData)) {
+					$results[$key][$Model->alias] = array_merge($results[$key][$Model->alias], $docData);
+				}
+				unset($results[$key][$Model->alias][$docColumn]);
+			}
+		}
+		return $results;
+	}
+
 	protected function _handleType($value, $type = 'string') {
 		switch ($type) {
 			case 'boolean':
