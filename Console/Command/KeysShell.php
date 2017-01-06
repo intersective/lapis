@@ -9,6 +9,30 @@ class KeysShell extends AppShell {
 		$this->out('hey');
 	}
 
+	public function test() {
+		// TODO: To remove this method
+
+		$str = 'Hello world!!';
+		$password = 'kkkkkkkkkkk';
+		$pwEnc = Lapis::pwEncrypt($str, $password);
+		$this->out('pwEnc: ' . $pwEnc); // ensure diff every time
+		$this->out('decrypted: ' . Lapis::pwDecrypt($pwEnc, $password));
+
+		$keypair = $this->Key->find('first');
+
+		$doc = array('test' => 123, 'xmas' => 'tree');
+		debug($doc);
+		$doc = json_encode($doc); // this should be part of Lapis
+		debug($doc);
+
+		$res = Lapis::docEncrypt($doc, $keypair['Key']['public_key']);
+		debug($res); // this should also be diff everytime
+
+		$decryptedDoc = Lapis::docDecrypt($res, $keypair['Key']['private_key']);
+		debug($decryptedDoc);
+
+	}
+
 	public function generate() {
 		// TODO: options
 		// --size

@@ -61,7 +61,7 @@ class Lapis {
 	 * generated key and initialization vector (IV)
 	 * Key and IV are subsequently encrypted with public key
 	 *
-	 * @param string $message The message to encrypt.
+	 * @param string $document Document to encrypt, usually in JSON format.
 	 * @param string $publicKey RSA public key.
 	 * @param string $cipher Encryption method. For list of supported methods, use openssl_get_cipher_methods()
 	 * @return array Array with the following elements:
@@ -70,28 +70,42 @@ class Lapis {
 	 *     'key' => Public key-encrypted key for symmetric encryption
 	 *     'iv' => Public key-encrypted iv for symmetric encryption
 	 */
-	public static function encrypt($message, $publicKey, $options = array()) {
+	public static function docEncrypt($document, $publicKey, $options = array()) {
 		$options = array_merge(array(
-			'cipher' => 'aes-256-cbc',
-			'keyLength' => 32,
-			'ivLength' => null
+			'cipher' => 'aes-256-ctr',
+			'keyLength' => 128,
 		), $options);
-		if (is_null($options['ivLength'])) {
-			$options['ivLength'] = openssl_cipher_iv_length($cipher);
-		}
 
+		$ivLength = openssl_cipher_iv_length($options['cipher']);
 		$key = openssl_random_pseudo_bytes($options['keyLength']);
-		$iv = openssl_random_pseudo_bytes($options['ivLength']);
-		$data = openssl_encrypt($message, $options['cipher'], $key, OPENSSL_RAW_DATA, $iv);
+		$iv = openssl_random_pseudo_bytes($ivLength);
+		$ciphertext = openssl_encrypt($document, $options['cipher'], $key, OPENSSL_RAW_DATA, $iv);
+		$data = $iv . $ciphertext;
 
-		openssl_public_encrypt($key, $encKey, $publicKey);
-		openssl_public_encrypt($iv, $encIV, $publicKey);
+		if (!openssl_public_encrypt($key, $encKey, $publicKey)) {
+			return false;
+		}
 
 		return array(
 			'cipher' => $options['cipher'],
-			'data' => $data,
-			'key' => $encKey,
-			'iv' => $encIv
+			'data' => base64_encode($data),
+			'key' => base64_encode($encKey)
 		);
+   }
+
+   public static function docDecrypt($dataArray, $privateKey) {
+   	$cipher = $dataArray['cipher'];
+   	$ivLength = openssl_cipher_iv_length($cipher);
+   	$data = base64_decode($dataArray['data']);
+   	$encKey = base64_decode($dataArray['key']);
+
+		if (!openssl_private_decrypt($encKey, $key, $privateKey)) {
+			return false;
+		}
+
+		$iv = substr($data, 0, $ivLength);
+		$ciphertext = substr($data, $ivLength);
+
+		return openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
    }
 }
