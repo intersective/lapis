@@ -5,7 +5,8 @@
 class SecDocBehavior extends ModelBehavior {
 
 	protected $_defaults = array(
-		'column' => 'document'
+		'column' => 'document',
+		'cipher' => 'aes-256-cbc'
 	);
 	protected $_types = array('inherit', 'string', 'number', 'boolean');
 
