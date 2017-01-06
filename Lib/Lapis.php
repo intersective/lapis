@@ -1,7 +1,19 @@
 <?php
-namespace Lapis\Lib;
+class Lapis {
+	public static function genKeyPair($keysize = 4096) {
+		$res = openssl_pkey_new(array(
+			'private_key_bits' => $keysize
+		));
 
-class Crypto {
+		openssl_pkey_export($res, $privkey);
+		$pubkey = openssl_pkey_get_details($res);
+
+		return array(
+			'private' => $privkey,
+			'public' => $pubkey['key']
+		);
+	}
+
 	/**
 	 * Symmetrically encrypts a message via $method with securely randomly
 	 * generated key and initialization vector (IV)
