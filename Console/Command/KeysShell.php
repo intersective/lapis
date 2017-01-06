@@ -7,12 +7,15 @@ class KeysShell extends AppShell {
 
 	public function main() {
 		$this->out('hey');
-		debug($this->Key->find('all'));
 	}
 
 	public function generate() {
 		// TODO: options
 		// --size
+		// --root
+		// --parent_id
+		// --file
+		// --password
 		// -y input-free
 
 		$options = array(
@@ -44,9 +47,11 @@ class KeysShell extends AppShell {
 		);
 
 		if ($options['savePrivateToDb']) {
-			// TODO: password encryption of private key
-
-			$data['private_key'] = $keys['private'];
+			if (!empty($options['password'])) {
+				$data['private_key'] = Lapis::pwEncrypt($keys['private'], $options['password']);
+			} else {
+				$data['private_key'] = $keys['private'];
+			}
 		}
 
 		$this->Key->create();
