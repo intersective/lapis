@@ -31,25 +31,88 @@ _TODO: why Lapis_
 
 ## Sample model
 
-```php
-<?php
-class Book extends AppModel {
-	public $name = 'Book';
-	public $actsAs = array('Lapis.SecDoc');
+1. To prepare a model for Lapis secured document, add a text field named `document` to the associated table.
 
-	/**
-	 * Either number, string or boolean
-	 */
-	public $documentSchema = array(
-		'author' => 'string',
-		'pages' => 'number',
-		'available' => 'boolean'
+	```sql
+	ALTER TABLE `table_name` ADD `document` TEXT NULL DEFAULT NULL;
+	```
+
+	On top of `document` field, you are free to still include other conventional fields such as `id`, `created`, or custom fields such as `title`, etc. Take note that data in conventional fields will not be encrypted, but being native, they would continue to enjoy database-level privilege such as indexing, etc.
+
+1. Update your Model to include `Lapis.SecDoc` behavior and define document schema. Lapis supports the following JSON data types: `string`, `number`, or `boolean`. If you prefer to not enforce data type, you can either specify a document field as `inherit` or use a non-associated array.
+
+	For illustration, a Book model with Lapis secured document.
+
+	```php
+	class Book extends AppModel {
+		public $name = 'Book';
+		public $actsAs = array('Lapis.SecDoc');
+
+		/**
+		 * Either number, string or boolean
+		 */
+		public $documentSchema = array(
+			'author' => 'string',
+			'pages' => 'number',
+			'available' => 'boolean'
+		);
+
+		// or if you prefer to not enforce JSON data types, you can list the schema as such
+		// public $documentSchema = array('author', 'pages', 'available');
+	}
+	```
+
+1. To save to a secured document model, you would specify the _lowest key(s)_ you would want to provide access privilege to. Lapis would sign the document for all the specified public keys and their respective parents and ancestors all the way to root key(s).
+
+	```php
+	$data = array(
+		// Conventional database fields
+		'title' => 'Book Title',
+
+		// Secured document
+		'author' => 'John Doe',
+		'pages' => 488,
+		'available' => true
 	);
 
-	// or if you prefer to not enforce JSON data types, you can list the schema as such
-	// public $documentSchema = array('author', 'pages', 'available');
-}
-```
+	$this->Book->lowestKeys = 2;
+	$this->Book->lowestKeys = array(2, 5); // for multiple lowest keys
+
+	$this->Book->save($data);
+	```
+
+	Assuming the key hierarchy is as illustrated:
+
+	```php
+	/*
+	 * 1 (root) => 2
+	 * 3 (root) => 4 => 5
+	 **/
+
+	$this->Book->lowestKeys = 2;
+	// would provide access to keys with IDs: 2 and 1 (its ancestors)
+
+	$this->Book->lowestKeys = array(2, 5);
+	// would provide access to keys with IDs: 2, 1; and 5, 4, 3.
+	```
+
+1. To query a secured document model, you would have to provide either the unencrypted private key that has privileged access to the document, or the password to the encrypted private key that has privileged access to the document.
+
+	```php
+	// Specifying encrypted private key in PEM encoded format, including header and footer.
+	$this->Book->privateKey = 'PEM_ENCODED_UNENCRYPTED_PRIVATE_KEY';
+
+	// or, the password to an encrypted private key in `keys` table
+	$this->Book->privateKey = array('id' => 23, 'password' => 'PASSWORD_TO_DECRYPT_PVT_KEY');
+
+	$this->Book->find('first', array(
+		'conditons' => array('Book.id' => 2)
+	));
+
+	// If the supplied private key has privileged access to the document, unencrypted document fields would be returned normally just like a normal database fields.
+	// Otherwise, only database fields would be returned encrypted.
+	```
+
 
 ## Notes
 
