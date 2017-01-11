@@ -11,7 +11,7 @@ Lapis is named after [Kue lapis](https://en.wikipedia.org/wiki/Kue_lapis), a lay
 
 _TODO: why Lapis_
 
-## How
+## Set up
 
 1. Install Lapis plugin to your local CakePHP app.
 
@@ -21,7 +21,7 @@ _TODO: why Lapis_
 	Console/cake schema create --plugin Lapis
 	```
 
-1. Generate the root key pair(s) by following the guided key generator.
+1. Generate the root key pair(s) by following the guided key generator. You would need at least 1 root key pair to use Lapis.
 
 	```bash
 	Console/cake Lapis.keys create    # follow the guided prompts
@@ -62,7 +62,7 @@ _TODO: why Lapis_
 	}
 	```
 
-1. To save to a secured document model, you would specify the _lowest key(s)_ you would want to provide access privilege to. Lapis would sign the document for all the specified public keys and their respective parents and ancestors all the way to root key(s).
+1. To save to a secured document model, you would specify the _lowest key(s)_ you would want to provide access privilege to. Lapis would sign the document for all the specified public keys and their respective ancestors all the way to root key(s).
 
 	```php
 	$data = array(
@@ -75,8 +75,8 @@ _TODO: why Lapis_
 		'available' => true
 	);
 
-	$this->Book->lowestKeys = 2;
-	$this->Book->lowestKeys = array(2, 5); // for multiple lowest keys
+	$this->Book->forKeys = 2;
+	$this->Book->forKeys = array(2, 5); // for multiple lowest keys
 
 	$this->Book->save($data);
 	```
@@ -85,16 +85,18 @@ _TODO: why Lapis_
 
 	```php
 	/*
-	 * 1 (root) => 2
+	 * 1 (root) => 2 => 9
 	 * 3 (root) => 4 => 5
 	 **/
 
-	$this->Book->lowestKeys = 2;
-	// would provide access to keys with IDs: 2 and 1 (its ancestors)
+	$this->Book->forKeys = 2;
+	// would provide access to keys with IDs: 2 and 1 (its ancestors), but not 3 (even though it is a root key)
 
-	$this->Book->lowestKeys = array(2, 5);
+	$this->Book->forKeys = array(2, 5);
 	// would provide access to keys with IDs: 2, 1; and 5, 4, 3.
 	```
+
+	If no valid `forKeys` are provided, Lapis would sign for _all_ root (parent-less) keys.
 
 1. To query a secured document model, you would have to provide either the unencrypted private key that has privileged access to the document, or the password to the encrypted private key that has privileged access to the document.
 
