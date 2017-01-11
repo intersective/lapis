@@ -1,4 +1,7 @@
 <?php
+/**
+ * User public and private keys
+ */
 App::uses('AppModel', 'Model');
 
 class Key extends AppModel {
