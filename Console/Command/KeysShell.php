@@ -33,7 +33,7 @@ class KeysShell extends AppShell {
 
 	}
 
-	public function generate() {
+	public function create() {
 		// TODO: options
 		// --size
 		// --root
@@ -92,32 +92,6 @@ class KeysShell extends AppShell {
 				}
 			}
 		}
-	}
-
-
-	/**
-	 * Generate a pair of private and public keys
-	 * Outputs the keys to console by default
-	 *
-	 * @return void
-	 */
-	public function generateOld($options = array()) {
-		$options = array_merge(array(
-			'keysize' => 4096,
-		), $options);
-
-		$ssl = openssl_pkey_new(array(
-			'private_key_bits' => $options['keysize']
-		));
-
-		openssl_pkey_export($ssl, $privkey);
-		debug($privkey);
-
-		$pubkey = openssl_pkey_get_details($ssl);
-		debug($pubkey['key']);
-
-		// TODO: proper schema compatible return
-
 	}
 }
 
