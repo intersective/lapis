@@ -2,11 +2,13 @@
 /**
  * Secured Document
  */
+App::uses('Lapis', 'Lapis.Lib');
 class SecDocBehavior extends ModelBehavior {
 
 	protected $_defaults = array(
 		'column' => 'document',
-		'cipher' => 'aes-256-ctr'
+		'cipher' => 'aes-256-ctr',
+		'document_id_digest' => 'sha256'
 	);
 	protected $_types = array('inherit', 'string', 'number', 'boolean');
 
@@ -16,6 +18,11 @@ class SecDocBehavior extends ModelBehavior {
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
+		$publicKeys = $this->_getPublicKeys($Model->forKeys);
+		if (empty($publicKeys)) {
+			return false; // no keys found
+		}
+
 		$document = array();
 
 		foreach ($Model->data[$Model->alias] as $field => $value) {
@@ -25,9 +32,15 @@ class SecDocBehavior extends ModelBehavior {
 			}
 		}
 
-		// TODO: Encryption
+		$encRes = Lapis::docEncrypt($document, $publicKeys);
 
-		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($document);
+		$encDoc = array(
+			'lapis' => $encRes['lapis'],
+			'cipher' => $encRes['cipher'],
+			'data' => $encRes['data']
+		);
+
+		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($encDoc);
 		return true;
 	}
 
@@ -94,5 +107,31 @@ class SecDocBehavior extends ModelBehavior {
 			}
 		}
 		return $schema;
+	}
+
+	/**
+	 * Returns list of public keys to encrypt with
+	 */
+	protected function _getPublicKeys($forKeys) {
+		if (!empty($forKeys) && !is_array($forKeys)) {
+			$forKeys = array($forKeys);
+		}
+
+		$KeyModel = ClassRegistry::init('Lapis.Key');
+		$keyIDs = $KeyModel->getAncestorIDs($forKeys);
+
+		$cond = array();
+		if (!empty($keyIDs)) {
+			$cond['Key.id'] = $keyIDs;
+		} else {
+			$cond['Key.parent_id'] = null; // get all root keys
+		}
+
+		$keys = $KeyModel->find('list', array(
+			'conditions' => $cond,
+			'fields' => array('Key.id', 'Key.public_key')
+		));
+
+		return $keys;
 	}
 }
