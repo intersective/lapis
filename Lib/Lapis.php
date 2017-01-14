@@ -62,7 +62,7 @@ class Lapis {
 	 * Key and IV are subsequently encrypted with public key
 	 *
 	 * @param string $document Document to encrypt, usually in JSON format.
-	 * @param string $publicKey RSA public key.
+	 * @param string or array $publicKeys RSA public key(s).
 	 * @param string $cipher Encryption method. For list of supported methods, use openssl_get_cipher_methods()
 	 * @return array Array with the following elements:
 	 *     'cipher' => $cipher used, in plaintext
@@ -70,11 +70,19 @@ class Lapis {
 	 *     'key' => Public key-encrypted key for symmetric encryption
 	 *     'iv' => Public key-encrypted iv for symmetric encryption
 	 */
-	public static function docEncrypt($document, $publicKey, $options = array()) {
+	public static function docEncrypt($document, $publicKeys, $options = array()) {
+		if (is_string($publicKeys)) {
+			return static::docEncryptForOne($document, $publicKeys, $options);
+		}
+
 		$options = array_merge(array(
 			'cipher' => 'aes-256-ctr',
 			'keyLength' => 128,
 		), $options);
+
+		if (!is_string($document)) {
+			$document = json_encode($document);
+		}
 
 		$ivLength = openssl_cipher_iv_length($options['cipher']);
 		$key = openssl_random_pseudo_bytes($options['keyLength']);
@@ -82,15 +90,29 @@ class Lapis {
 		$ciphertext = openssl_encrypt($document, $options['cipher'], $key, OPENSSL_RAW_DATA, $iv);
 		$data = $iv . $ciphertext;
 
-		if (!openssl_public_encrypt($key, $encKey, $publicKey)) {
-			return false;
+		$keys = array();
+		foreach ($publicKeys as $i => $publicKey) {
+			if (!openssl_public_encrypt($key, $encKey, $publicKey)) {
+				return false;
+			}
+			$keys[$i] = base64_encode($encKey);
 		}
 
 		return array(
+			'lapis' => 1.0,
 			'cipher' => $options['cipher'],
 			'data' => base64_encode($data),
-			'key' => base64_encode($encKey)
+			'keys' => $keys
 		);
+   }
+
+   public static function docEncryptForOne($document, $publicKey, $options = array()) {
+   	$results = static::docEncrypt($document, array($publicKey), $options);
+   	if (isset($results['keys'][0])) {
+	   	$results['key'] = $results['keys'][0];
+	   	unset($results['keys']);
+	   }
+   	return $results;
    }
 
    public static function docDecrypt($dataArray, $privateKey) {
@@ -106,6 +128,12 @@ class Lapis {
 		$iv = substr($data, 0, $ivLength);
 		$ciphertext = substr($data, $ivLength);
 
-		return openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+		$document = openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+
+		$docObject = json_decode($document);
+		if (!$docObject) {
+			return $document;
+		}
+		return $docObject;
    }
 }

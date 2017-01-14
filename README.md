@@ -78,6 +78,7 @@ _TODO: why Lapis_
 	$this->Book->forKeys = 2;
 	$this->Book->forKeys = array(2, 5); // for multiple lowest keys
 
+	$this->Book->create();
 	$this->Book->save($data);
 	```
 

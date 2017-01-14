@@ -2,20 +2,33 @@
 /**
  * Secured Document
  */
+App::uses('Lapis', 'Lapis.Lib');
 class SecDocBehavior extends ModelBehavior {
 
 	protected $_defaults = array(
 		'column' => 'document',
-		'cipher' => 'aes-256-ctr'
+		'cipher' => 'aes-256-ctr',
+		'document_id_digest' => 'sha256',
+		'salt' => null, // generated on constructor if it is set to null (recommended)
 	);
 	protected $_types = array('inherit', 'string', 'number', 'boolean');
 
 	public function setup(Model $Model, $settings = array()) {
 		$this->schema[$Model->alias] = $this->_normalizeSchema($Model->documentSchema);
 		$this->settings[$Model->alias] = array_merge($this->_defaults, $settings);
+
+		// Generate behavior security salt
+		if (empty($this->settings[$Model->alias]['salt'])) {
+			$this->settings[$Model->alias]['salt'] = sha1(Configure::read('Security.salt') . $Model->alias);
+		}
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
+		$publicKeys = $this->_getPublicKeys($Model->forKeys);
+		if (empty($publicKeys)) {
+			return false; // no keys found
+		}
+
 		$document = array();
 
 		foreach ($Model->data[$Model->alias] as $field => $value) {
@@ -25,10 +38,45 @@ class SecDocBehavior extends ModelBehavior {
 			}
 		}
 
-		// TODO: Encryption
+		$encRes = Lapis::docEncrypt($document, $publicKeys);
 
-		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($document);
+		$encDoc = array(
+			'lapis' => $encRes['lapis'],
+			'cipher' => $encRes['cipher'],
+			'data' => $encRes['data']
+		);
+		$encDocJSON = json_encode($encDoc);
+
+		// Hold the keys for afterSave() – after model ID is obtained
+		$this->dockeys[$Model->alias][sha1($encDocJSON)] = $encRes['keys'];
+
+		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = $encDocJSON;
 		return true;
+	}
+
+	public function afterSave(Model $Model, $created, $options = array()) {
+		if (isset($Model->data[$Model->alias][$this->settings[$Model->alias]['column']])) {
+			$encDocJSONHash = sha1($Model->data[$Model->alias][$this->settings[$Model->alias]['column']]);
+			if (!isset($this->dockeys[$Model->alias][$encDocJSONHash])) {
+				throw new CakeException('Document keys not found after successful save');
+			}
+
+			$modelID = sha1($this->settings[$Model->alias]['salt'] . $Model->data[$Model->alias]['id']);
+			$DocumentModel = ClassRegistry::init('Lapis.Document');
+			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
+				$docData[] = array(
+					'id' => sha1($modelID . $keyID),
+					'key_id' => $keyID,
+					'model_id' => $modelID,
+					'document_pw' => $docKey
+				);
+			}
+
+			// Junk the keys after use
+			unset($this->dockeys[$Model->alias][$encDocJSONHash]);
+
+			return $DocumentModel->saveMany($docData);
+		}
 	}
 
 	/**
@@ -94,5 +142,31 @@ class SecDocBehavior extends ModelBehavior {
 			}
 		}
 		return $schema;
+	}
+
+	/**
+	 * Returns list of public keys to encrypt with
+	 */
+	protected function _getPublicKeys($forKeys) {
+		if (!empty($forKeys) && !is_array($forKeys)) {
+			$forKeys = array($forKeys);
+		}
+
+		$KeyModel = ClassRegistry::init('Lapis.Key');
+		$keyIDs = $KeyModel->getAncestorIDs($forKeys);
+
+		$cond = array();
+		if (!empty($keyIDs)) {
+			$cond['Key.id'] = $keyIDs;
+		} else {
+			$cond['Key.parent_id'] = null; // get all root keys
+		}
+
+		$keys = $KeyModel->find('list', array(
+			'conditions' => $cond,
+			'fields' => array('Key.id', 'Key.public_key')
+		));
+
+		return $keys;
 	}
 }
