@@ -24,16 +24,16 @@ class LapisSchema extends CakeSchema {
 	);
 
 	public $lapis_documents = array(
-		'id' => array('type' => 'integer', 'null' => false, 'default' => null, 'length' => 11, 'key' => 'primary'),
+		'id' => array('type' => 'binary', 'null' => false, 'default' => null, 'length' => 256, 'key' => 'primary'),
 		'created' => array('type' => 'datetime', 'null' => true, 'default' => null),
 		'modified' => array('type' => 'datetime', 'null' => true, 'default' => null),
 		'key_id' => array('type' => 'integer', 'null' => false, 'default' => null, 'length' => 11),
-		'document_model' => array('type' => 'string', 'null' => false, 'default' => null),
-		'document_id' => array('type' => 'integer', 'null' => false, 'default' => null, 'length' => 11),
-		'document_key' => array('type' => 'text', 'null' => false),
+		'model_id' => array('type' => 'binary', 'null' => false, 'default' => null, 'length' => 256),
+		'document_pw' => array('type' => 'text', 'null' => false),
 		'indexes' => array(
 			'PRIMARY' => array('unique' => true, 'column' => 'id'),
-			'lapis_document_user_key_id' => array('unique' => true, 'column' => array('document_model', 'document_id', 'key_id')),
+			'lapis_key_id' => array('column' => 'key_id'),
+			'lapis_model_id' => array('column' => 'model_id'),
 		),
 		'tableParameters' => array()
 	);

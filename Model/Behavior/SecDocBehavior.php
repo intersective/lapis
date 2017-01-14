@@ -8,13 +8,19 @@ class SecDocBehavior extends ModelBehavior {
 	protected $_defaults = array(
 		'column' => 'document',
 		'cipher' => 'aes-256-ctr',
-		'document_id_digest' => 'sha256'
+		'document_id_digest' => 'sha256',
+		'salt' => null, // generated on constructor if it is set to null (recommended)
 	);
 	protected $_types = array('inherit', 'string', 'number', 'boolean');
 
 	public function setup(Model $Model, $settings = array()) {
 		$this->schema[$Model->alias] = $this->_normalizeSchema($Model->documentSchema);
 		$this->settings[$Model->alias] = array_merge($this->_defaults, $settings);
+
+		// Generate behavior security salt
+		if (empty($this->settings[$Model->alias]['salt'])) {
+			$this->settings[$Model->alias]['salt'] = sha1(Configure::read('Security.salt') . $Model->alias);
+		}
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
@@ -39,9 +45,38 @@ class SecDocBehavior extends ModelBehavior {
 			'cipher' => $encRes['cipher'],
 			'data' => $encRes['data']
 		);
+		$encDocJSON = json_encode($encDoc);
 
-		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = json_encode($encDoc);
+		// Hold the keys for afterSave() – after model ID is obtained
+		$this->dockeys[$Model->alias][sha1($encDocJSON)] = $encRes['keys'];
+
+		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = $encDocJSON;
 		return true;
+	}
+
+	public function afterSave(Model $Model, $created, $options = array()) {
+		if (isset($Model->data[$Model->alias][$this->settings[$Model->alias]['column']])) {
+			$encDocJSONHash = sha1($Model->data[$Model->alias][$this->settings[$Model->alias]['column']]);
+			if (!isset($this->dockeys[$Model->alias][$encDocJSONHash])) {
+				throw new CakeException('Document keys not found after successful save');
+			}
+
+			$modelID = sha1($this->settings[$Model->alias]['salt'] . $Model->data[$Model->alias]['id']);
+			$DocumentModel = ClassRegistry::init('Lapis.Document');
+			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
+				$docData[] = array(
+					'id' => sha1($modelID . $keyID),
+					'key_id' => $keyID,
+					'model_id' => $modelID,
+					'document_pw' => $docKey
+				);
+			}
+
+			// Junk the keys after use
+			unset($this->dockeys[$Model->alias][$encDocJSONHash]);
+
+			return $DocumentModel->saveMany($docData);
+		}
 	}
 
 	/**
