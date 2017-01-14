@@ -102,11 +102,14 @@ _TODO: why Lapis_
 1. To query a secured document model, you would have to provide either the unencrypted private key that has privileged access to the document, or the password to the encrypted private key that has privileged access to the document.
 
 	```php
-	// Specifying encrypted private key in PEM encoded format, including header and footer.
-	$this->Book->privateKey = 'PEM_ENCODED_UNENCRYPTED_PRIVATE_KEY';
+	// Specifying unencrypted private key in PEM encoded format, including header and footer.
+	$this->Book->privateKey = array('id' => 2, 'unencrypted_key' => 'PEM_ENCODED_UNENCRYPTED_PRIVATE_KEY';
 
 	// or, the password to an encrypted private key in `keys` table
 	$this->Book->privateKey = array('id' => 23, 'password' => 'PASSWORD_TO_DECRYPT_PVT_KEY');
+
+	// if private key is stored unencrypted in database (not recommended), id is all that is required.
+	$this->Book->privateKey = array('id' => 23);
 
 	$this->Book->find('first', array(
 		'conditons' => array('Book.id' => 2)
