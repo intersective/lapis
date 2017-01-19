@@ -61,7 +61,8 @@ class SecDocBehavior extends ModelBehavior {
 				throw new CakeException('Document keys not found after successful save');
 			}
 
-			$modelID = sha1($this->settings[$Model->alias]['salt'] . $Model->data[$Model->alias]['id']);
+			$modelID = $this->_getModelID($Model->alias, $Model->data[$Model->alias]['id']);
+
 			$DocumentModel = ClassRegistry::init('Lapis.Document');
 			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
 				$docData[] = array(
@@ -86,11 +87,25 @@ class SecDocBehavior extends ModelBehavior {
 		$docColumn = $this->settings[$Model->alias]['column'];
 		foreach ($results as $key => $row) {
 			if (array_key_exists($docColumn, $row[$Model->alias])) {
-				$docData = json_decode($results[$key][$Model->alias][$docColumn], true);
+				$docData = false;
+				if (!empty($Model->requestAs)) {
+					$requesterPrivateKey = ClassRegistry::init('Lapis.Key')->getPrivateKey($Model->requestAs);
+					$encDocKey = ClassRegistry::init('Lapis.Document')->getEncryptedPassword(
+						$this->_getModelID($Model->alias, $results[$key][$Model->alias]['id']),
+						$Model->requestAs['id']
+					);
+					$docData = Lapis::docDecrypt(
+						$results[$key][$Model->alias][$docColumn],
+						$encDocKey,
+						$requesterPrivateKey
+					);
+				}
 				if (is_array($docData)) {
 					$results[$key][$Model->alias] = array_merge($results[$key][$Model->alias], $docData);
+					unset($results[$key][$Model->alias][$docColumn]);
+				} else {
+					$results[$key][$Model->alias][$docColumn] = '(encrypted)';
 				}
-				unset($results[$key][$Model->alias][$docColumn]);
 			}
 		}
 		return $results;
@@ -168,5 +183,9 @@ class SecDocBehavior extends ModelBehavior {
 		));
 
 		return $keys;
+	}
+
+	protected function _getModelID($modelAlias, $id) {
+		return sha1($this->settings[$modelAlias]['salt'] . $id);
 	}
 }

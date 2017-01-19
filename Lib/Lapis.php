@@ -115,25 +115,27 @@ class Lapis {
    	return $results;
    }
 
-   public static function docDecrypt($dataArray, $privateKey) {
-   	$cipher = $dataArray['cipher'];
+   public static function docDecrypt($docData, $encDocKey, $privateKey) {
+   	if (is_string($docData)) {
+   		$docData = json_decode($docData);
+   	}
+   	$encDocKeyDecoded = base64_decode($encDocKey);
+   	$cipher = $docData->cipher;
    	$ivLength = openssl_cipher_iv_length($cipher);
-   	$data = base64_decode($dataArray['data']);
-   	$encKey = base64_decode($dataArray['key']);
+   	$data = base64_decode($docData->data);
 
-		if (!openssl_private_decrypt($encKey, $key, $privateKey)) {
+		if (!openssl_private_decrypt($encDocKeyDecoded, $key, $privateKey)) {
 			return false;
 		}
-
 		$iv = substr($data, 0, $ivLength);
 		$ciphertext = substr($data, $ivLength);
 
 		$document = openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
 
-		$docObject = json_decode($document);
-		if (!$docObject) {
+		$docArray = json_decode($document, true);
+		if (!$docArray) {
 			return $document;
 		}
-		return $docObject;
+		return $docArray;
    }
 }
