@@ -3,6 +3,7 @@
  * User public and private keys
  */
 App::uses('AppModel', 'Model');
+App::uses('Lapis', 'Lapis.Lib');
 
 class Key extends AppModel {
 	public $tablePrefix = 'lapis_';
@@ -38,5 +39,38 @@ class Key extends AppModel {
 		}
 
 		return array_keys($indexedRes);;
+	}
+
+
+	/**
+	 * Obtain the private key given $requestAs object
+	 * @param  array $requestAs can be in one of the following 3 forms:
+	 *    i. $this->Book->requestAs = array('id' => 2, 'unencrypted_key' => 'PEM_ENCODED_UNENCRYPTED_PRIVATE_KEY';  // Private key stored externally
+	 *   ii. $this->Book->requestAs = array('id' => 23, 'password' => 'PASSWORD_TO_DECRYPT_PVT_KEY');
+	 *  iii. $this->Book->requestAs = array('id' => 23); // Private key unencrypted
+	 * @return [type]            [description]
+	 */
+	public function getPrivateKey($requestAs) {
+		if (!empty($requestAs['unencrypted_key'])) {
+			return $requestAs['unencrypted_key'];
+		}
+
+		$entry = $this->find('first', array(
+			'conditions' => array('id' => $requestAs['id']),
+			'fields' => array('id', 'private_key')
+		));
+		if (empty($entry)) {
+			return false;
+		}
+		$privateKey = $entry[$this->alias]['private_key'];
+		if (preg_match('/-+BEGIN \S*\s?PRIVATE KEY-+/i', $privateKey)) {
+			return $privateKey;
+		}
+
+		// Attempt to decrypt
+		if (empty($requestAs['password'])) {
+			return false; // Unable to decrypt, no password provided
+		}
+		return Lapis::pwDecrypt($privateKey, $requestAs['password']);
 	}
 }
