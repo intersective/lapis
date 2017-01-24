@@ -7,30 +7,41 @@ php:
   - 7.1
 
 env:
-  - CAKE_VERSION=2 DB=postgres
+  - CAKE_VERSION=2 DB=pgsql
   - CAKE_VERSION=2 DB=mysql
-  - CAKE_VERSION=2.8 DB=postgres
+  - CAKE_VERSION=2.8 DB=pgsql
 
 install:
   - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
-  - cd ../cakephp && CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
-  - cp -R ../lapis plugins/Lapis
+  - cd ../cakephp && export CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
+  - cp -R ../lapis $CAKE_DIR/app/Plugin/Lapis
   - chmod -R 777 $CAKE_DIR/app/tmp
   - composer global require 'phpunit/phpunit=3.7.38'
   - ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit $CAKE_DIR/vendors/PHPUnit
 
 before_script:
-  - sh -c "mysql -e 'CREATE DATABASE cakephp_test;'"
-  - echo "<?php
+  - if [ "$DB" = "pgsql" ]; then psql -c 'CREATE DATABASE lapis_test;' -U postgres; fi
+  - if [ "$DB" = "mysql" ]; then mysql -e 'CREATE DATABASE lapis_test;'; fi
+  - if [ "$DB" = "pgsql" ]; then echo "<?php
     class DATABASE_CONFIG {
-    public \$test = array(
-      'datasource' => 'Database/Mysql',
-      'database' => 'cakephp_test',
+    public \$default = array(
+      'datasource' => 'Database/Postgres',
+      'database' => 'lapis_test',
       'host' => '0.0.0.0',
       'login' => 'travis',
-      'persistent' => false,
     );
-    }" > ../cakephp/app/Config/database.php
+    }" > $CAKE_DIR/app/Config/database.php; fi
+  - if [ "$DB" = "mysql" ]; then echo "<?php
+    class DATABASE_CONFIG {
+    public \$default = array(
+      'datasource' => 'Database/Mysql',
+      'database' => 'lapis_test',
+      'host' => '0.0.0.0',
+      'login' => 'travis',
+    );
+    }" > $CAKE_DIR/app/Config/database.php; fi
+  - cd $CAKE_DIR/app; cat Config/database.php;
+  - Console/cake schema create --plugin Lapis --yes
 
 script:
-  - ./lib/Cake/Console/cake test Lapis AllTests --stderr
+  - cd $CAKE_DIR/app; Console/cake test Lapis AllTests --stderr
