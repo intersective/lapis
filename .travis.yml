@@ -41,6 +41,7 @@ before_script:
     );
     }" > $CAKE_DIR/app/Config/database.php; fi
   - cd $CAKE_DIR/app; cat Config/database.php;
+  - Console/cake schema create --plugin Lapis
 
 script:
   - cd $CAKE_DIR/app; Console/cake test Lapis AllTests --stderr
