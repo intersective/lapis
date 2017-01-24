@@ -6,31 +6,17 @@ class KeysShell extends AppShell {
 	public $uses = array('Lapis.Key');
 
 	public function main() {
-		$this->out('hey');
+		$this->out('Lapis keys generator.');
 	}
 
-	public function test() {
-		// TODO: To remove this method
-
-		$str = 'Hello world!!';
-		$password = 'kkkkkkkkkkk';
-		$pwEnc = Lapis::pwEncrypt($str, $password);
-		$this->out('pwEnc: ' . $pwEnc); // ensure diff every time
-		$this->out('decrypted: ' . Lapis::pwDecrypt($pwEnc, $password));
-
-		$keypair = $this->Key->find('first');
-
-		$doc = array('test' => 123, 'xmas' => 'tree');
-		debug($doc);
-		$doc = json_encode($doc); // this should be part of Lapis
-		debug($doc);
-
-		$res = Lapis::docEncrypt($doc, $keypair['Key']['public_key']);
-		debug($res); // this should also be diff everytime
-
-		$decryptedDoc = Lapis::docDecrypt($res, $keypair['Key']['private_key']);
-		debug($decryptedDoc);
-
+	public function getOptionParser() {
+		$parser = parent::getOptionParser();
+		$parser->addOption('yes', array(
+		  'short' => 'y',
+		  'help' => 'Do not prompt for confirmation. Be careful!',
+		  'boolean' => true
+		));
+		return $parser;
 	}
 
 	public function create() {
@@ -40,7 +26,6 @@ class KeysShell extends AppShell {
 		// --parent_id
 		// --file
 		// --password
-		// -y input-free
 
 		$options = array(
 			'parentID' => null,
@@ -48,18 +33,32 @@ class KeysShell extends AppShell {
 			'privateKeyLocation' => null,
 			'password' => null
 		);
+		$toAsk = array(
+			'parentID' => true,
+			'save' => true,
+		);
 
-		$isRoot = $this->in('Is this a root key pair?', array('y', 'n'), 'y');
-		if ($isRoot !== 'y') {
-			$options['parentID'] = $this->in('Enter parent key ID:');
+		if ($this->params['yes']) {
+			$this->out('Interaction free mode.');
+			$toAsk['parentID'] = false;
+			$toAsk['save'] = false;
 		}
-		$savePrivateToDb = $this->in('Save root private key to database?', array('y', 'n'), 'y');
-		if ($savePrivateToDb === 'y') {
-			$options['savePrivateToDb'] = true;
-			$options['password'] = $this->in("WARNING: It is a good practice to not store private key unencrypted in database.\nEnter password to encrypt private key before storing in database, blank for none (no encryption).");
-		} else {
-			$options['savePrivateToDb'] = false;
-			$options['privateKeyLocation'] = $this->in('Enter private key location to save to:', null, APP . 'private.key');
+
+		if ($toAsk['parentID']) {
+			$isRoot = $this->in('Is this a root key pair?', array('y', 'n'), 'y');
+			if ($isRoot !== 'y') {
+				$options['parentID'] = $this->in('Enter parent key ID:');
+			}
+		}
+		if ($toAsk['save']) {
+			$savePrivateToDb = $this->in('Save root private key to database?', array('y', 'n'), 'y');
+			if ($savePrivateToDb === 'y') {
+				$options['savePrivateToDb'] = true;
+				$options['password'] = $this->in("WARNING: It is a good practice to not store private key unencrypted in database.\nEnter password to encrypt private key before storing in database, blank for none (no encryption).");
+			} else {
+				$options['savePrivateToDb'] = false;
+				$options['privateKeyLocation'] = $this->in('Enter private key location to save to:', null, APP . 'private.key');
+			}
 		}
 
 		$this->out('Generating root public key pair...');
