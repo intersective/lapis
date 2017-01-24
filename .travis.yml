@@ -7,7 +7,7 @@ php:
 
 env:
 #  - CAKE_VERSION=2.6
-  - CAKE_VERSION=2.7
+  - CAKE_VERSION=2.7 DB=postgres
 
 install:
   # - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
@@ -34,7 +34,5 @@ before_script:
     }" > ../cakephp/app/Config/database.php
 
 script:
-  - ./lib/Cake/Console/cake test AssetCompress AllTests --stderr
+  - ./lib/Cake/Console/cake test Lapis AllTests --stderr
 
-notifications:
-  email: false
