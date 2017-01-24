@@ -1,24 +1,23 @@
 language: php
 
 php:
-#  - 5.4
-#  - 5.5
+  - 5.5
   - 5.6
+  - 7.0
+  - 7.1
 
 env:
-#  - CAKE_VERSION=2.6
-  - CAKE_VERSION=2.7 DB=postgres
+  - CAKE_VERSION=2 DB=postgres
+  - CAKE_VERSION=2 DB=mysql
+  - CAKE_VERSION=2.8 DB=postgres
 
 install:
-  # - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
   - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
   - cd ../cakephp && CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
   - cp -R ../lapis plugins/Lapis
   - chmod -R 777 $CAKE_DIR/app/tmp
   - composer global require 'phpunit/phpunit=3.7.38'
   - ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit $CAKE_DIR/vendors/PHPUnit
-  #- sh -c "composer global require 'phpunit/phpunit=3.7.38'"
-  #- sh -c "ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit ../cakephp/vendors/PHPUnit"
 
 before_script:
   - sh -c "mysql -e 'CREATE DATABASE cakephp_test;'"
@@ -35,4 +34,3 @@ before_script:
 
 script:
   - ./lib/Cake/Console/cake test Lapis AllTests --stderr
-
