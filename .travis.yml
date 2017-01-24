@@ -1,20 +1,24 @@
 language: php
 
 php:
-  - 5.4
-  - 5.5
+#  - 5.4
+#  - 5.5
   - 5.6
 
 env:
-  - CAKE_VERSION=2.6
+#  - CAKE_VERSION=2.6
   - CAKE_VERSION=2.7
 
 install:
   - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
-  - cp -R ../asset_compress plugins/AssetCompress
-  - chmod -R 777 ../cakephp/app/tmp
-  - sh -c "composer global require 'phpunit/phpunit=3.7.33'"
-  - sh -c "ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit ../cakephp/vendors/PHPUnit"
+  - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
+  - cd ../cakephp && CAKE_DIR=`pwd`
+  - cp -R ../lapis plugins/Lapis
+  - chmod -R 777 $CAKE_DIR/app/tmp
+  - composer global require 'phpunit/phpunit=3.7.38
+  - ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit $CAKE_DIR/vendors/PHPUnit
+  #- sh -c "composer global require 'phpunit/phpunit=3.7.38'"
+  #- sh -c "ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit ../cakephp/vendors/PHPUnit"
 
 before_script:
   - sh -c "mysql -e 'CREATE DATABASE cakephp_test;'"
