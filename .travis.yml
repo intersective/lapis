@@ -22,7 +22,7 @@ install:
 before_script:
   - if [ '$DB' = 'pgsql' ]; then psql -c 'CREATE DATABASE lapis_test;' -U postgres; fi
   - if [ '$DB' = 'mysql' ]; then mysql -e 'CREATE DATABASE lapis_test;'; fi
-  - if [ '$DB' = 'pgsql' ]; echo "<?php
+  - if [ '$DB' = 'pgsql' ]; then echo "<?php
     class DATABASE_CONFIG {
     public \$test = array(
       'datasource' => 'Database/Postgres',
@@ -30,8 +30,8 @@ before_script:
       'host' => '0.0.0.0',
       'login' => 'travis',
     );
-    }" > $CAKE_DIR/app/Config/database.php
-  - if [ '$DB' = 'mysql' ]; echo "<?php
+    }" > $CAKE_DIR/app/Config/database.php; fi
+  - if [ '$DB' = 'mysql' ]; then echo "<?php
     class DATABASE_CONFIG {
     public \$test = array(
       'datasource' => 'Database/Mysql',
@@ -39,7 +39,7 @@ before_script:
       'host' => '0.0.0.0',
       'login' => 'travis',
     );
-    }" > $CAKE_DIR/app/Config/database.php
+    }" > $CAKE_DIR/app/Config/database.php; fi
   - cd $CAKE_DIR/app; Console/cake schema create --plugin Lapis;
 
 script:
