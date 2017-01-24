@@ -15,7 +15,7 @@ install:
   - cd ../cakephp && CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
   - cp -R ../lapis plugins/Lapis
   - chmod -R 777 $CAKE_DIR/app/tmp
-  - composer global require 'phpunit/phpunit=3.7.38
+  - composer global require 'phpunit/phpunit=3.7.38'
   - ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit $CAKE_DIR/vendors/PHPUnit
   #- sh -c "composer global require 'phpunit/phpunit=3.7.38'"
   #- sh -c "ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit ../cakephp/vendors/PHPUnit"
