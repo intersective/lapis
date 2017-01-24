@@ -13,8 +13,8 @@ env:
 
 install:
   - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
-  - cd ../cakephp && CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
-  - cp -R ../lapis $CAKE_DIR/app/plugins/Lapis
+  - cd ../cakephp && export CAKE_DIR=`pwd` && cat $CAKE_DIR/lib/Cake/VERSION.txt
+  - cp -R ../lapis $CAKE_DIR/app/Plugin/Lapis
   - chmod -R 777 $CAKE_DIR/app/tmp
   - composer global require 'phpunit/phpunit=3.7.38'
   - ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit $CAKE_DIR/vendors/PHPUnit
