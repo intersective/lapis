@@ -40,7 +40,7 @@ class KeysShell extends AppShell {
 		// --parent_id
 		// --file
 		// --password
-		// -y input-free
+		// -y --no-interaction
 
 		$options = array(
 			'parentID' => null,
