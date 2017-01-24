@@ -1,15 +1,15 @@
 language: php
 
 php:
-#  - 5.5
+  - 5.5
   - 5.6
-#  - 7.0
-#  - 7.1
+  - 7.0
+  - 7.1
 
 env:
   - CAKE_VERSION=2 DB=pgsql
   - CAKE_VERSION=2 DB=mysql
-#  - CAKE_VERSION=2.8 DB=pgsql
+  - CAKE_VERSION=2.8 DB=pgsql
 
 install:
   - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
@@ -41,7 +41,7 @@ before_script:
     );
     }" > $CAKE_DIR/app/Config/database.php; fi
   - cd $CAKE_DIR/app; cat Config/database.php;
-  - Console/cake schema create --plugin Lapis
+  - Console/cake schema create --plugin Lapis --yes
 
 script:
   - cd $CAKE_DIR/app; Console/cake test Lapis AllTests --stderr
