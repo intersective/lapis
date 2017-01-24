@@ -10,9 +10,9 @@ env:
   - CAKE_VERSION=2.7
 
 install:
-  - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
+  # - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
   - composer create-project --no-install cakephp/cakephp:$CAKE_VERSION.* ../cakephp
-  - cd ../cakephp && CAKE_DIR=`pwd`
+  - cd ../cakephp && CAKE_DIR=`pwd` && cat CAKE_DIR/lib/Cake/VERSION.txt
   - cp -R ../lapis plugins/Lapis
   - chmod -R 777 $CAKE_DIR/app/tmp
   - composer global require 'phpunit/phpunit=3.7.38
