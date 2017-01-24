@@ -1,4 +1,8 @@
 # Lapis
+
+[![Build Status](https://travis-ci.org/intersective/lapis.svg?branch=master)](https://travis-ci.org/intersective/lapis)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+
 CakePHP 2.x plugin providing highly-secured public-key encryption to database I/O.
 
 **This is a work-in-progress**. The implementation, documentation and sample code are not only incomplete, they may also change without notice.
