@@ -19,7 +19,7 @@ class KeysShell extends AppShell {
 		return $parser;
 	}
 
-	public function create() {
+	public function generate() {
 		// TODO: options
 		// --keysize
 		// --root
@@ -28,27 +28,27 @@ class KeysShell extends AppShell {
 		// --password
 
 		$options = array(
-			'size' => 4096,
-			'parentID' => null,
+			'keysize' => 4096,
+			'parent' => null,
 			'savePrivateToDb' => true,
 			'privateKeyLocation' => null,
 			'password' => null
 		);
 		$toAsk = array(
-			'parentID' => true,
+			'parent' => true,
 			'save' => true,
 		);
 
 		if ($this->params['yes']) {
 			$this->out('Interaction free mode.');
-			$toAsk['parentID'] = false;
+			$toAsk['parent'] = false;
 			$toAsk['save'] = false;
 		}
 
-		if ($toAsk['parentID']) {
+		if ($toAsk['parent']) {
 			$isRoot = $this->in('Is this a root key pair?', array('y', 'n'), 'y');
 			if ($isRoot !== 'y') {
-				$options['parentID'] = $this->in('Enter parent key ID:');
+				$options['parent'] = $this->in('Enter parent key ID:');
 			}
 		}
 		if ($toAsk['save']) {
@@ -63,34 +63,14 @@ class KeysShell extends AppShell {
 		}
 
 		$this->out('Generating root public key pair...');
-		$keys = Lapis::genKeyPair($options['keysize']);
-
-		$data = array(
-			'parent_id' => $options['parentID'],
-			'public_key' => $keys['public'],
-		);
-
-		if ($options['savePrivateToDb']) {
-			if (!empty($options['password'])) {
-				$data['private_key'] = Lapis::pwEncrypt($keys['private'], $options['password']);
-			} else {
-				$data['private_key'] = $keys['private'];
-			}
-		}
-
-		$this->Key->create();
-		$ok = $this->Key->save($data);
-
-		if ($ok) {
+		if ($this->Key->generate($options['password'], $options)) {
 			$this->out('Key pair generated and saved successfully with key ID: ' . $this->Key->getLastInsertID());
 
 			if (!$options['savePrivateToDb']) {
-				if (file_put_contents($options['privateKeyLocation'], $keys['private'])) {
-					$this->out('Private key is written successfully to ' . $options['privateKeyLocation']);
-				} else {
-					$this->error('Failed to write private key to ' . $options['privateKeyLocation']);
-				}
+				$this->out('Private key is written successfully to ' . $options['privateKeyLocation']);
 			}
+		} else {
+			$this->out('Failure encountered when generating key pair.');
 		}
 	}
 }

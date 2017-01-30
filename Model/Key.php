@@ -15,7 +15,7 @@ class Key extends AppModel {
 	public function generate($password, $options = array()) {
 		$options = array_merge(array(
 			'keysize' => 4096,
-			'parentID' => null,
+			'parent' => null,
 			'savePrivateToDb' => true,
 			'privateKeyLocation' => null
 		), $options);
@@ -24,7 +24,7 @@ class Key extends AppModel {
 		$keys = Lapis::genKeyPair($options['keysize']);
 
 		$data = array(
-			'parent_id' => $options['parentID'],
+			'parent_id' => $options['parent'],
 			'public_key' => $keys['public'],
 		);
 

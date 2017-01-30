@@ -23,7 +23,7 @@ class ExperienceTest extends CakeTestCase {
 
 		// No password
 		$this->assertTrue($this->Key->generate(null, array(
-			'parentID' => $id,
+			'parent' => $id,
 			'keysize' => 1024
 		)));
 		$secondID = $this->Key->getLastInsertID();
