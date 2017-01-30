@@ -12,22 +12,23 @@ class KeysShell extends AppShell {
 	public function getOptionParser() {
 		$parser = parent::getOptionParser();
 		$parser->addOption('yes', array(
-		  'short' => 'y',
-		  'help' => 'Do not prompt for confirmation. Be careful!',
-		  'boolean' => true
+			'short' => 'y',
+			'help' => 'Do not prompt for confirmation. Be careful!',
+			'boolean' => true
 		));
 		return $parser;
 	}
 
 	public function create() {
 		// TODO: options
-		// --size
+		// --keysize
 		// --root
 		// --parent_id
 		// --file
 		// --password
 
 		$options = array(
+			'size' => 4096,
 			'parentID' => null,
 			'savePrivateToDb' => true,
 			'privateKeyLocation' => null,
@@ -62,7 +63,7 @@ class KeysShell extends AppShell {
 		}
 
 		$this->out('Generating root public key pair...');
-		$keys = Lapis::genKeyPair();
+		$keys = Lapis::genKeyPair($options['keysize']);
 
 		$data = array(
 			'parent_id' => $options['parentID'],
