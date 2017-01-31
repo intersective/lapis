@@ -24,7 +24,7 @@ before_script:
   - if [ "$DB" = "mysql" ]; then mysql -e 'CREATE DATABASE lapis_test;'; fi
   - if [ "$DB" = "pgsql" ]; then echo "<?php
     class DATABASE_CONFIG {
-    public \$default = array(
+    public \$test = array(
       'datasource' => 'Database/Postgres',
       'database' => 'lapis_test',
       'host' => '0.0.0.0',
@@ -33,7 +33,7 @@ before_script:
     }" > $CAKE_DIR/app/Config/database.php; fi
   - if [ "$DB" = "mysql" ]; then echo "<?php
     class DATABASE_CONFIG {
-    public \$default = array(
+    public \$test = array(
       'datasource' => 'Database/Mysql',
       'database' => 'lapis_test',
       'host' => '0.0.0.0',
@@ -41,7 +41,6 @@ before_script:
     );
     }" > $CAKE_DIR/app/Config/database.php; fi
   - cd $CAKE_DIR/app; cat Config/database.php;
-  - Console/cake schema create --plugin Lapis --yes
 
 script:
   - cd $CAKE_DIR/app; Console/cake test Lapis AllTests --stderr

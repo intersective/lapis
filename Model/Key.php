@@ -10,6 +10,46 @@ class Key extends AppModel {
 	public $name = 'Key';
 
 	/**
+	 * Generate RSA key pair
+	 */
+	public function generate($password, $options = array()) {
+		$options = array_merge(array(
+			'keysize' => 4096,
+			'parent' => null,
+			'savePrivateToDb' => true,
+			'privateKeyLocation' => null
+		), $options);
+		$options['password'] = $password;
+
+		$keys = Lapis::genKeyPair($options['keysize']);
+
+		$data = array(
+			'parent_id' => $options['parent'],
+			'public_key' => $keys['public'],
+		);
+
+		if ($options['savePrivateToDb']) {
+			if (!empty($options['password'])) {
+				$data['private_key'] = Lapis::pwEncrypt($keys['private'], $options['password']);
+			} else {
+				$data['private_key'] = $keys['private'];
+			}
+		}
+
+		$this->create();
+		$ok = $this->save($data);
+
+		if ($ok) {
+			if (!$options['savePrivateToDb']) {
+				return file_put_contents($options['privateKeyLocation'], $keys['private']);
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Return a list of ancestor IDs including self
 	 */
 	public function getAncestorIDs($ids, $includeSelf = true) {

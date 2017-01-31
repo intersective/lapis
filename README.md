@@ -28,7 +28,7 @@ _TODO: why Lapis_
 1. Generate the root key pair(s) by following the guided key generator. You would need at least 1 root key pair to use Lapis.
 
 	```bash
-	Console/cake Lapis.keys create    # follow the guided prompts
+	Console/cake Lapis.keys generate    # follow the guided prompts
 	```
 
 	It is highly recommended to not store private keys unencrypted at the database. If you provide a password to the private key, take note that the password is not stored anywhere in the system. You would have to store the password safely and separately outside of the system.
