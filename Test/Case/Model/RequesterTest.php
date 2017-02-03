@@ -60,4 +60,37 @@ class RequesterTest extends CakeTestCase {
 		));
 		$this->assertNotEmpty($requester['Requester']['vault_public_key']);
 	}
+
+	public function testGetAncestors() {
+		$this->assertTrue($this->Requester->generate(rand()));
+		$root = $this->Requester->find('first', array(
+			'conditions' => array('Requester.id' => $this->Requester->getLastInsertID())
+		));
+		$this->assertTrue($this->Requester->generate(rand(), array('parent' => $root['Requester']['id'])));
+		$child = $this->Requester->find('first', array(
+			'conditions' => array('Requester.id' => $this->Requester->getLastInsertID())
+		));
+		$this->assertTrue($this->Requester->generate(rand(), array('parent' => $child['Requester']['id'])));
+		$grandchild = $this->Requester->find('first', array(
+			'conditions' => array('Requester.id' => $this->Requester->getLastInsertID())
+		));
+
+		$this->assertNull($root['Requester']['parent_id']);
+		$this->assertEquals($root['Requester']['id'], $child['Requester']['parent_id']);
+		$this->assertEquals($child['Requester']['id'], $grandchild['Requester']['parent_id']);
+
+		$ancestors = $this->Requester->getAncestors($grandchild['Requester']['id']);
+		$this->assertEquals(array(
+			$grandchild['Requester']['id'] => $grandchild['Requester']['ident_public_key'],
+			$child['Requester']['id'] => $child['Requester']['ident_public_key'],
+			$root['Requester']['id'] => $root['Requester']['ident_public_key']
+		), $ancestors);
+
+		// Exclude self
+		$ancestors = $this->Requester->getAncestors($grandchild['Requester']['id'], false);
+		$this->assertEquals(array(
+			$child['Requester']['id'] => $child['Requester']['ident_public_key'],
+			$root['Requester']['id'] => $root['Requester']['ident_public_key']
+		), $ancestors);
+	}
 }

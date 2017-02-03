@@ -98,6 +98,7 @@ class Requester extends AppModel {
 
 	/**
 	 * Return a list of ancestor IDs including self
+	 * DEPRECATED: To remove at the end of this Pull Request
 	 */
 	public function getAncestorIDs($ids, $includeSelf = true) {
 		$indexedRes = array();
@@ -125,9 +126,38 @@ class Requester extends AppModel {
 			}
 		}
 
-		return array_keys($indexedRes);;
+		return array_keys($indexedRes);
 	}
 
+	/**
+	 * Return a list of ancestors and their respective identity public keys given $id
+	 */
+	public function getAncestors($id, $includeSelf = true) {
+		$ancestors = array();
+		$parentID = $id;
+
+		while (!empty($parentID)) {
+			$requester = $this->find('first', array(
+				'conditions' => array('Requester.id' => $parentID),
+				'fields' => array('Requester.id', 'Requester.parent_id', 'Requester.ident_public_key')
+			));
+
+			$parentID = null;
+			if (!empty($requester)) {
+				$candidateID = $requester['Requester']['id'];
+				$parentID = $requester['Requester']['parent_id'];
+				if ($candidateID === $id) {
+					if ($includeSelf) {
+						$ancestors[$candidateID] = $requester['Requester']['ident_public_key'];
+					}
+				} else {
+					$ancestors[$candidateID] = $requester['Requester']['ident_public_key'];
+				}
+			}
+		}
+
+		return $ancestors;
+	}
 
 	/**
 	 * Obtain the private key given $requestAs object
