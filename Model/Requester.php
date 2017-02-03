@@ -5,9 +5,9 @@
 App::uses('AppModel', 'Model');
 App::uses('Lapis', 'Lapis.Lib');
 
-class Key extends AppModel {
+class Requester extends AppModel {
 	public $tablePrefix = 'lapis_';
-	public $name = 'Key';
+	public $name = 'Requester';
 
 	/**
 	 * Generate RSA key pair
@@ -25,19 +25,20 @@ class Key extends AppModel {
 
 		$data = array(
 			'parent_id' => $options['parent'],
-			'public_key' => $keys['public'],
+			'ident_public_key' => $keys['public'],
 		);
 
 		if ($options['savePrivateToDb']) {
 			if (!empty($options['password'])) {
-				$data['private_key'] = Lapis::pwEncrypt($keys['private'], $options['password']);
+				$data['ident_private_key'] = Lapis::pwEncrypt($keys['private'], $options['password']);
 			} else {
-				$data['private_key'] = $keys['private'];
+				$data['ident_private_key'] = $keys['private'];
 			}
 		}
 
 		$this->create();
 		$ok = $this->save($data);
+
 
 		if ($ok) {
 			if (!$options['savePrivateToDb']) {
@@ -58,8 +59,8 @@ class Key extends AppModel {
 
 		while (!empty($parentIDs)) {
 			$keys = $this->find('list', array(
-				'conditions' => array('Key.id' => $parentIDs),
-				'fields' => array('Key.id', 'Key.parent_id')
+				'conditions' => array('Requester.id' => $parentIDs),
+				'fields' => array('Requester.id', 'Requester.parent_id')
 			));
 
 			$parentIDs = array();
