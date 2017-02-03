@@ -17,9 +17,18 @@ class Requester extends AppModel {
 			'keysize' => 4096,
 			'parent' => null,
 			'savePrivateToDb' => true,
-			'privateKeyLocation' => null
+			'privateKeyLocation' => null,
+			'hasVault' => null
 		), $options);
 		$options['password'] = $password;
+
+		if (is_null($options['hasVault'])) {
+			if (is_null($options['parent'])) {
+				$options['hasVault'] = false; // Root requester should not have vault by default
+			} else {
+				$options['hasVault'] = true;
+			}
+		}
 
 		$keys = Lapis::genKeyPair($options['keysize']);
 
@@ -39,6 +48,11 @@ class Requester extends AppModel {
 		$this->create();
 		$ok = $this->save($data);
 
+		if ($ok) {
+			if ($options['hasVault']) {
+				$ok = $this->createVault($this->getLastInsertID());
+			}
+		}
 
 		if ($ok) {
 			if (!$options['savePrivateToDb']) {
@@ -48,6 +62,38 @@ class Requester extends AppModel {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Create a vault for a Requester
+	 * @param  string  $id Requester ID
+	 * @param  array $options
+	 *     - boolean 'overwriteIfExists' By default do not recreate new vaults if an existing one already exists. Set to true to override this behavior.
+	 *     - integer 'keysize' Size of keypair
+	 * @return boolean Successfully created a new Vault for the said Requester
+	 */
+	public function createVault($id, $options = array()) {
+		$options = array_merge(array(
+			'keysize' => 4096,
+			'overwriteIfExists' => false,
+		), $options);
+
+		$requester = $this->find('first', array(
+			'conditions' => array('Requester.id' => $id),
+			'fields' => array('Requester.id', 'Requester.vault_public_key')
+		));
+
+		if (empty($requester)) {
+			return false;
+		}
+		if (!empty($requester['Requester']['vault_public_key']) && !$options['overwriteIfExists']) {
+			return false;
+		}
+
+		$keys = Lapis::genKeyPair($options['keysize']);
+		return $this->save(array('Requester' => array(
+			'vault_public_key' => $keys['public']
+		)));
 	}
 
 	/**

@@ -21,6 +21,9 @@ class RequesterTest extends CakeTestCase {
 		$this->assertNotEmpty($requester['Requester']['ident_private_key']);
 		$this->assertNotContains('BEGIN PRIVATE KEY', $requester['Requester']['ident_private_key']);
 
+		// Root should not have vault by default
+		$this->assertNull($requester['Requester']['vault_public_key']);
+
 		// No password
 		$this->assertTrue($this->Requester->generate(null, array(
 			'parent' => $id,
@@ -35,5 +38,26 @@ class RequesterTest extends CakeTestCase {
 		$this->assertEquals($id, $requester['Requester']['parent_id']);
 		$this->assertContains('BEGIN PUBLIC KEY', $requester['Requester']['ident_public_key']);
 		$this->assertContains('BEGIN PRIVATE KEY', $requester['Requester']['ident_private_key']);
+
+		// Not root should have a vault by default
+		$this->assertNotEmpty($requester['Requester']['vault_public_key']);
+	}
+
+	public function testCreateVault() {
+		$password = sha1(rand());
+		$this->assertTrue($this->Requester->generate($password), array(
+			'hasVault' => false
+		));
+		$id = $this->Requester->getLastInsertID();
+		$requester = $this->Requester->find('first', array(
+			'conditions' => array('Requester.id' => $id)
+		));
+		$this->assertNull($requester['Requester']['vault_public_key']);
+		$this->Requester->createVault($id);
+
+		$requester = $this->Requester->find('first', array(
+			'conditions' => array('Requester.id' => $id)
+		));
+		$this->assertNotEmpty($requester['Requester']['vault_public_key']);
 	}
 }
