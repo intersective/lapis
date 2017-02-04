@@ -70,7 +70,7 @@ class Lapis {
 	 *     'key' => Public key-encrypted key for symmetric encryption
 	 *     'iv' => Public key-encrypted iv for symmetric encryption
 	 */
-	public static function docEncrypt($document, $publicKeys, $options = array()) {
+	public static function docEncryptForMany($document, $publicKeys, $options = array()) {
 		if (is_string($publicKeys)) {
 			return static::docEncryptForOne($document, $publicKeys, $options);
 		}
@@ -106,8 +106,8 @@ class Lapis {
 		);
    }
 
-   public static function docEncryptForOne($document, $publicKey, $options = array()) {
-   	$results = static::docEncrypt($document, array($publicKey), $options);
+   public static function docEncrypt($document, $publicKey, $options = array()) {
+   	$results = static::docEncryptForMany($document, array($publicKey), $options);
    	if (isset($results['keys'][0])) {
 	   	$results['key'] = $results['keys'][0];
 	   	unset($results['keys']);

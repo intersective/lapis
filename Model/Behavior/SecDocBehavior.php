@@ -38,7 +38,7 @@ class SecDocBehavior extends ModelBehavior {
 			}
 		}
 
-		$encRes = Lapis::docEncrypt($document, $publicKeys);
+		$encRes = Lapis::docEncryptForMany($document, $publicKeys);
 
 		$encDoc = array(
 			'lapis' => $encRes['lapis'],

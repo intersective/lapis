@@ -1,6 +1,6 @@
 <?php
-class RequesterFixture extends CakeTestFixture {
-	public $table = 'lapis_requesters';
+class AccessorFixture extends CakeTestFixture {
+	public $table = 'lapis_accessors';
 
 	/**
 	 * Load fields from schema.php (DRY)

@@ -1,13 +1,18 @@
 <?php
-/**
- * User public and private keys
- */
 App::uses('AppModel', 'Model');
 App::uses('Lapis', 'Lapis.Lib');
 
+/**
+ * User public and private keys
+ */
 class Requester extends AppModel {
 	public $tablePrefix = 'lapis_';
 	public $name = 'Requester';
+
+	public function __construct($id = false, $table = null, $ds = null) {
+		parent::__construct($id, $table, $ds);
+		$this->Accessor = ClassRegistry::init('Lapis.Accessor');
+	}
 
 	/**
 	 * Generate RSA key pair
@@ -91,9 +96,30 @@ class Requester extends AppModel {
 		}
 
 		$keys = Lapis::genKeyPair($options['keysize']);
-		return $this->save(array('Requester' => array(
-			'vault_public_key' => $keys['public']
-		)));
+		$accessors = $this->getAncestors($id);
+		$encVault = Lapis::docEncryptForMany($keys['private'], $accessors);
+
+		$encVaultSansKeys = $encVault;
+		unset($encVaultSansKeys['keys']);
+
+		$this->id = $id;
+		if ($this->save(array('Requester' => array(
+			'vault_public_key' => $keys['public'],
+			'vault_private_key' => json_encode($encVaultSansKeys)
+		)))) {
+			$accessorData = array();
+			foreach ($accessors as $accID => $accKey) {
+				$accessorData[] = array(
+					'owner_requester_id' => $id,
+					'accessor_requester_id' => $accID,
+					'key' => $accKey
+				);
+			}
+
+			return $this->Accessor->saveMany($accessorData);
+		}
+
+		return false;
 	}
 
 	/**

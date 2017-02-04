@@ -1,7 +1,10 @@
 <?php
 class RequesterTest extends CakeTestCase {
 
-	public $fixtures = array('plugin.lapis.requester');
+	public $fixtures = array(
+		'plugin.lapis.requester',
+		'plugin.lapis.accessor',
+	);
 
 	public function setUp() {
 		$this->Requester = ClassRegistry::init('Lapis.Requester');
