@@ -1,6 +1,6 @@
 <?php
 /**
- * Document keys encrypted with user's public key
+ * Document keys encrypted with vault's public key
  */
 App::uses('AppModel', 'Model');
 

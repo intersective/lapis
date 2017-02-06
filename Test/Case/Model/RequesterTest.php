@@ -1,4 +1,5 @@
 <?php
+require_once(dirname(dirname(dirname(__FILE__))) . DS . 'Fixture' . DS . 'utils.php');
 class RequesterTest extends CakeTestCase {
 
 	public $fixtures = array(
@@ -8,12 +9,6 @@ class RequesterTest extends CakeTestCase {
 
 	public function setUp() {
 		$this->Requester = ClassRegistry::init('Lapis.Requester');
-
-		require_once(dirname(dirname(dirname(__FILE__))) . DS . 'Fixture' . DS . 'utils.php');
-		$this->families = array(
-			FixtureUtils::initFamily($this->Requester, 3),
-			FixtureUtils::initFamily($this->Requester, 2),
-		);
 	}
 
 	public function testGenerate() {
@@ -71,14 +66,16 @@ class RequesterTest extends CakeTestCase {
 	}
 
 	public function testGetAncestors() {
+		$family = FixtureUtils::initFamily($this->Requester, 3);
+
 		$root = $this->Requester->find('first', array(
-			'conditions' => array('Requester.id' => $this->families[0][0])
+			'conditions' => array('Requester.id' => $family[0])
 		));
 		$child = $this->Requester->find('first', array(
-			'conditions' => array('Requester.id' => $this->families[0][1])
+			'conditions' => array('Requester.id' => $family[1])
 		));
 		$grandchild = $this->Requester->find('first', array(
-			'conditions' => array('Requester.id' => $this->families[0][2])
+			'conditions' => array('Requester.id' => $family[2])
 		));
 
 		$this->assertNull($root['Requester']['parent_id']);

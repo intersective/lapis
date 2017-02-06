@@ -24,13 +24,13 @@ class EncryptableBehavior extends ModelBehavior {
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
-		$publicKeys = $this->_getPublicKeys($Model->forKeys);
-		if (empty($publicKeys)) {
-			return false; // no keys found
+		$vaults = $this->_getVaultPublicKeys($Model->saveFor);
+
+		if (empty($vaults)) {
+			return false;
 		}
 
 		$document = array();
-
 		foreach ($Model->data[$Model->alias] as $field => $value) {
 			if (isset($this->schema[$Model->alias][$field])) {
 				$document[$field] = $this->_handleType($value, $this->schema[$Model->alias][$field]);
@@ -38,17 +38,15 @@ class EncryptableBehavior extends ModelBehavior {
 			}
 		}
 
-		$encRes = Lapis::docEncryptForMany($document, $publicKeys);
+		$encRes = Lapis::docEncryptForMany($document, $vaults);
+		$dockeys = $encRes['keys'];
 
-		$encDoc = array(
-			'lapis' => $encRes['lapis'],
-			'cipher' => $encRes['cipher'],
-			'data' => $encRes['data']
-		);
+		$encDoc = $encRes;
+		unset($encDoc['keys']);
 		$encDocJSON = json_encode($encDoc);
 
 		// Hold the keys for afterSave() – after model ID is obtained
-		$this->dockeys[$Model->alias][sha1($encDocJSON)] = $encRes['keys'];
+		$this->dockeys[$Model->alias][sha1($encDocJSON)] = $dockeys;
 
 		$Model->data[$Model->alias][$this->settings[$Model->alias]['column']] = $encDocJSON;
 		return true;
@@ -67,9 +65,8 @@ class EncryptableBehavior extends ModelBehavior {
 			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
 				$docData[] = array(
 					'id' => sha1($modelID . $keyID),
-					'key_id' => $keyID,
-					'model_id' => $modelID,
-					'document_pw' => $docKey
+					'owner_requester_id' => $keyID,
+					'key' => $docKey
 				);
 			}
 
@@ -160,7 +157,33 @@ class EncryptableBehavior extends ModelBehavior {
 	}
 
 	/**
+	 * Returns list of vault public keys
+	 *
+	 * @param array/string $saveFor ID or IDs of Requester
+	 * @return array List of ID and associated vault public keys
+	 *               or false, if any of the IDs do not have a vault
+	 */
+	protected function _getVaultPublicKeys($saveFor) {
+		if (!is_array($saveFor)) {
+			$saveFor = array($saveFor);
+		}
+
+		$Requester = ClassRegistry::init('Lapis.Requester');
+		$results = $Requester->find('list', array(
+			'conditions' => array('id' => $saveFor, 'vault_public_key IS NOT NULL'),
+			'fields' => array('id', 'vault_public_key'),
+		));
+
+		// If any of the ID does not have a vault, return false for all
+		if (count($results) !== count($saveFor)) {
+			return false;
+		}
+		return $results;
+	}
+
+	/**
 	 * Returns list of public keys to encrypt with
+	 * DEPRECATED
 	 */
 	protected function _getPublicKeys($forKeys) {
 		if (!empty($forKeys) && !is_array($forKeys)) {

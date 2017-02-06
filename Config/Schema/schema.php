@@ -38,8 +38,8 @@ class LapisSchema extends CakeSchema {
 		'tableParameters' => array()
 	);
 
-	public $lapis_objects = array(
-		'id' => array('type' => 'string', 'null' => false, 'default' => null, 'length' => 36, 'key' => 'primary'),
+	public $lapis_documents = array(
+		'id' => array('type' => 'binary', 'null' => false, 'default' => null, 'length' => 20, 'key' => 'primary'),
 		'created' => array('type' => 'datetime'),
 		'modified' => array('type' => 'datetime'),
 		'owner_requester_id' => array('type' => 'string', 'length' => 36, 'null' => true, 'default' => null),
