@@ -4,7 +4,7 @@ App::uses('AppModel', 'Model');
 class Book extends AppModel {
 	public $name = 'Book';
 	public $useDbConfig = 'test';
-	public $actsAs = array('Lapis.SecDoc');
+	public $actsAs = array('Lapis.Encryptable');
 
 	/**
 	 * Types can be either inherit, number, string or boolean

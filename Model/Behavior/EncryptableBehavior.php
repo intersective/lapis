@@ -1,13 +1,12 @@
 <?php
 /**
- * DEPRECATED
- * Secured Document
+ * Encryptable Behavior
  */
 App::uses('Lapis', 'Lapis.Lib');
-class SecDocBehavior extends ModelBehavior {
+class EncryptableBehavior extends ModelBehavior {
 
 	protected $_defaults = array(
-		'column' => 'document',
+		'column' => 'encrypted',
 		'cipher' => 'aes-256-ctr',
 		'document_id_digest' => 'sha256',
 		'salt' => null, // generated on constructor if it is set to null (recommended)
