@@ -59,13 +59,11 @@ class EncryptableBehavior extends ModelBehavior {
 				throw new CakeException('Document keys not found after successful save');
 			}
 
-			$modelID = $this->_getModelID($Model->alias, $Model->data[$Model->alias]['id']);
-
 			$DocumentModel = ClassRegistry::init('Lapis.Document');
 			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
 				$docData[] = array(
-					'id' => sha1($modelID . $keyID),
-					'owner_requester_id' => $keyID,
+					'model_id' => $this->_getModelID($Model->alias, $Model->data[$Model->alias]['id']),
+					'vault_id' => $keyID,
 					'key' => $docKey
 				);
 			}
@@ -84,21 +82,45 @@ class EncryptableBehavior extends ModelBehavior {
 		$docColumn = $this->settings[$Model->alias]['column'];
 		foreach ($results as $key => $row) {
 			if (array_key_exists($docColumn, $row[$Model->alias])) {
-				$docData = false;
+				$docFields = false;
 				if (!empty($Model->requestAs)) {
-					$requesterPrivateKey = ClassRegistry::init('Lapis.Key')->getPrivateKey($Model->requestAs);
-					$encDocKey = ClassRegistry::init('Lapis.Document')->getEncryptedPassword(
-						$this->_getModelID($Model->alias, $results[$key][$Model->alias]['id']),
-						$Model->requestAs['id']
-					);
-					$docData = Lapis::docDecrypt(
-						$results[$key][$Model->alias][$docColumn],
-						$encDocKey,
+					$docRow = ClassRegistry::init('Lapis.Document')->find('first', array(
+						'conditions' => array(
+							'model_id' => $this->_getModelID($Model->alias, $results[$key][$Model->alias]['id'], $Model->requestAs['id'])
+						),
+						'fields' => array('id', 'model_id', 'vault_id', 'key')
+					));
+
+					$accessor = ClassRegistry::init('Lapis.Accessor')->find('first', array(
+						'conditions' => array(
+							'vault_id' => $docRow['Document']['vault_id'],
+							'requester_id' => $Model->requestAs['id']
+						),
+					));
+
+					$vault = ClassRegistry::init('Lapis.Requester')->find('first', array(
+						'conditions' => array(
+							'id' => $docRow['Document']['vault_id'],
+						),
+						'fields' => array('id', 'vault_private_key'),
+					));
+
+					$encDoc = $results[$key][$Model->alias][$docColumn];
+					$vaultKeyDoc = $vault['Requester']['vault_private_key'];
+					$documentKey = $docRow['Document']['key'];
+					$requesterAccessorKey = $accessor['Accessor']['key'];
+					$requesterPrivateKey = ClassRegistry::init('Lapis.Requester')->getPrivateKey($Model->requestAs);
+
+					$docFields = $this->_decryptDocument(
+						$encDoc,
+						$vaultKeyDoc,
+						$documentKey,
+						$requesterAccessorKey,
 						$requesterPrivateKey
 					);
 				}
-				if (is_array($docData)) {
-					$results[$key][$Model->alias] = array_merge($results[$key][$Model->alias], $docData);
+				if (is_array($docFields)) {
+					$results[$key][$Model->alias] = array_merge($results[$key][$Model->alias], $docFields);
 					unset($results[$key][$Model->alias][$docColumn]);
 				} else {
 					$results[$key][$Model->alias][$docColumn] = '(encrypted)';
@@ -210,5 +232,24 @@ class EncryptableBehavior extends ModelBehavior {
 
 	protected function _getModelID($modelAlias, $id) {
 		return sha1($this->settings[$modelAlias]['salt'] . $id);
-	}
+ 	}
+
+ 	/**
+ 	 * Decrypt a document given the following
+ 	 * @param  string $encDoc Encrypted document, obtainable from target model's encrypted field
+ 	 * @param  string $vaultKeyDoc Encrypted vault's private key document, obtainable from Lapis.Requester's vault_private_key field
+ 	 * @param  string $documentKey Encrypted document key, obtainable from Lapis.Document's key field
+ 	 * @param  string $requesterAccessorKey Encrypted requester accessor key, obtainable from Lapis.Accessor's key field
+ 	 * @param  string $requesterPrivateKey Unencrypted clear requester's identity private key
+ 	 * @return array Successfully decrypted document, or false
+ 	 */
+ 	protected function _decryptDocument($encDoc, $vaultKeyDoc, $documentKey, $requesterAccessorKey, $requesterPrivateKey) {
+		$vaultPrivate = Lapis::docDecrypt($vaultKeyDoc, $requesterAccessorKey, $requesterPrivateKey);
+		if (empty($vaultPrivate)) {
+			return false;
+		}
+
+		$document = Lapis::docDecrypt($encDoc, $documentKey, $vaultPrivate);
+		return $document;
+ 	}
 }

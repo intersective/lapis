@@ -15,7 +15,6 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		$this->Requester = ClassRegistry::init('Lapis.Requester');
 	}
 
-
 	public function testAbleToSaveAndRetrieve() {
 		$family = FixtureUtils::initFamily($this->Requester, 3);
 
@@ -38,6 +37,38 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		$this->assertFalse(array_key_exists('pages', $result['Book']));
 		$this->assertFalse(array_key_exists('available', $result['Book']));
 		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
+
+		// Without valid requester
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertFalse(array_key_exists('author', $result['Book']));
+
+		// With valid requester, but wrong password
+		$this->Book->requestAs = array('id' => $family[1]['id'], 'password' => 'INVALID_PASSWORD');
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertFalse(array_key_exists('author', $result['Book']));
+
+		// Valid requesters
+		foreach ($family as $member) {
+			$this->Book->requestAs = array('id' => $member['id'], 'password' => $member['password']);
+			$book = $this->Book->find('first', array(
+				'conditions' => array('Book.id' => 1)
+			));
+
+			$this->assertEquals(1, $book['Book']['id']);
+			$this->assertEquals('Test book', $book['Book']['title']);
+			$this->assertTrue(array_key_exists('author', $book['Book']));
+			$this->assertEquals('John Doe', $book['Book']['author']);
+			$this->assertEquals(2462, $book['Book']['pages']);
+			$this->assertEquals(true, $book['Book']['available']);
+		}
 	}
 
 	public function testSaveEncryptedWithoutSaveFor() {

@@ -108,11 +108,11 @@ class Requester extends AppModel {
 			'vault_private_key' => json_encode($encVaultSansKeys)
 		)))) {
 			$accessorData = array();
-			foreach ($accessors as $accID => $accKey) {
+			foreach ($accessors as $accID => $accPublicKey) {
 				$accessorData[] = array(
-					'owner_requester_id' => $id,
-					'accessor_requester_id' => $accID,
-					'key' => $accKey
+					'vault_id' => $id,
+					'requester_id' => $accID,
+					'key' => $encVault['keys'][$accID]
 				);
 			}
 
@@ -200,12 +200,12 @@ class Requester extends AppModel {
 
 		$entry = $this->find('first', array(
 			'conditions' => array('id' => $requestAs['id']),
-			'fields' => array('id', 'private_key')
+			'fields' => array('id', 'ident_private_key')
 		));
 		if (empty($entry)) {
 			return false;
 		}
-		$privateKey = $entry[$this->alias]['private_key'];
+		$privateKey = $entry[$this->alias]['ident_private_key'];
 		if (preg_match('/-+BEGIN \S*\s?PRIVATE KEY-+/i', $privateKey)) {
 			return $privateKey;
 		}

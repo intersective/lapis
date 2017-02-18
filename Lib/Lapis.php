@@ -124,9 +124,14 @@ class Lapis {
    	$ivLength = openssl_cipher_iv_length($cipher);
    	$data = base64_decode($docData->data);
 
-		if (!openssl_private_decrypt($encDocKeyDecoded, $key, $privateKey)) {
+   	try {
+			if (!openssl_private_decrypt($encDocKeyDecoded, $key, $privateKey)) {
+				return false;
+			}
+		} catch (Exception $e) {
 			return false;
 		}
+
 		$iv = substr($data, 0, $ivLength);
 		$ciphertext = substr($data, $ivLength);
 
