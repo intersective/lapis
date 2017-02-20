@@ -134,10 +134,46 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		}
 	}
 
-	public function testSaveEncryptedWithoutSaveFor() {
+	public function testSaveEncryptedWithoutSaveForShouldFail() {
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->assertFalse($this->Book->save($data));
 	}
 
-	public function testAbleToQuery() {
+	public function testSaveEncryptedIntoVaultlessRequester() {
+		$family = FixtureUtils::initFamily($this->Requester, 2);
+		$altFamily = FixtureUtils::initFamily($this->Requester, 2);
+
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		// Root does not have vault
+		$this->Book->create();
+		$this->Book->saveFor = $family[0]['id'];
+		$this->assertFalse($this->Book->save($data));
+
+		// 1 of requesters do not have vault, fail all
+		$this->Book->create();
+		$this->Book->saveFor = array($altFamily[1]['id'], $family[0]['id']);
+		$this->assertFalse($this->Book->save($data));
+
+		// Forcefully create vault for root (bad practice)
+		$this->assertTrue($this->Requester->createVault($family[0]['id']));
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[0]['id']; // Root now has vault
+		$result = $this->Book->save($data);
+		$this->assertEquals('Test book', $result['Book']['title']);
 	}
 
 	public function testAbleToUpdate() {
