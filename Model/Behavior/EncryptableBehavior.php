@@ -62,7 +62,7 @@ class EncryptableBehavior extends ModelBehavior {
 			$DocumentModel = ClassRegistry::init('Lapis.Document');
 			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
 				$docData[] = array(
-					'model_id' => $this->_getModelID($Model->alias, $Model->data[$Model->alias]['id']),
+					'model_id' => $this->_getModelID($Model->alias, $Model->id),
 					'vault_id' => $keyID,
 					'key' => $docKey
 				);
@@ -84,41 +84,55 @@ class EncryptableBehavior extends ModelBehavior {
 			if (array_key_exists($docColumn, $row[$Model->alias])) {
 				$docFields = false;
 				if (!empty($Model->requestAs)) {
-					$docRow = ClassRegistry::init('Lapis.Document')->find('first', array(
+					$proceed = true;
+
+					$docVaults = ClassRegistry::init('Lapis.Document')->find('list', array(
 						'conditions' => array(
-							'model_id' => $this->_getModelID($Model->alias, $results[$key][$Model->alias]['id'], $Model->requestAs['id'])
+							'model_id' => $this->_getModelID($Model->alias, $results[$key][$Model->alias]['id'])
 						),
-						'fields' => array('id', 'model_id', 'vault_id', 'key')
+						'fields' => array('vault_id', 'key')
 					));
+					$proceed = !empty($docVaults);
 
-					$accessor = ClassRegistry::init('Lapis.Accessor')->find('first', array(
-						'conditions' => array(
-							'vault_id' => $docRow['Document']['vault_id'],
-							'requester_id' => $Model->requestAs['id']
-						),
-					));
+					if ($proceed) {
+						$accessor = ClassRegistry::init('Lapis.Accessor')->find('first', array(
+							'conditions' => array(
+								'vault_id' => array_keys($docVaults),
+								'requester_id' => $Model->requestAs['id']
+							),
+							'fields' => array('id', 'vault_id', 'key')
+						));
+						$proceed = !empty($accessor);
+					}
 
-					$vault = ClassRegistry::init('Lapis.Requester')->find('first', array(
-						'conditions' => array(
-							'id' => $docRow['Document']['vault_id'],
-						),
-						'fields' => array('id', 'vault_private_key'),
-					));
+					if ($proceed) {
+						$vaultID = $accessor['Accessor']['vault_id'];
+						$vault = ClassRegistry::init('Lapis.Requester')->find('first', array(
+							'conditions' => array(
+								'id' => $vaultID,
+							),
+							'fields' => array('id', 'vault_private_key'),
+						));
+						$proceed = !empty($vault);
+					}
 
-					$encDoc = $results[$key][$Model->alias][$docColumn];
-					$vaultKeyDoc = $vault['Requester']['vault_private_key'];
-					$documentKey = $docRow['Document']['key'];
-					$requesterAccessorKey = $accessor['Accessor']['key'];
-					$requesterPrivateKey = ClassRegistry::init('Lapis.Requester')->getPrivateKey($Model->requestAs);
+					if ($proceed) {
+						$encDoc = $results[$key][$Model->alias][$docColumn];
+						$vaultKeyDoc = $vault['Requester']['vault_private_key'];
+						$documentKey = $docVaults[$vaultID];
+						$requesterAccessorKey = $accessor['Accessor']['key'];
+						$requesterPrivateKey = ClassRegistry::init('Lapis.Requester')->getPrivateKey($Model->requestAs);
 
-					$docFields = $this->_decryptDocument(
-						$encDoc,
-						$vaultKeyDoc,
-						$documentKey,
-						$requesterAccessorKey,
-						$requesterPrivateKey
-					);
+						$docFields = $this->_decryptDocument(
+							$encDoc,
+							$vaultKeyDoc,
+							$documentKey,
+							$requesterAccessorKey,
+							$requesterPrivateKey
+						);
+					}
 				}
+
 				if (is_array($docFields)) {
 					$results[$key][$Model->alias] = array_merge($results[$key][$Model->alias], $docFields);
 					unset($results[$key][$Model->alias][$docColumn]);
