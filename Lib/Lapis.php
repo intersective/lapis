@@ -67,12 +67,10 @@ class Lapis {
 	 * @return array Array with the following elements:
 	 *     'cipher' => $cipher used, in plaintext
 	 *     'data' => Symmetrically encrypted string
-	 *     'key' => Public key-encrypted key for symmetric encryption
-	 *     'iv' => Public key-encrypted iv for symmetric encryption
 	 */
 	public static function docEncryptForMany($document, $publicKeys, $options = array()) {
 		if (is_string($publicKeys)) {
-			return static::docEncryptForOne($document, $publicKeys, $options);
+			$publicKeys = array($publicKeys);
 		}
 
 		$options = array_merge(array(
@@ -84,9 +82,14 @@ class Lapis {
 			$document = json_encode($document);
 		}
 
-		$ivLength = openssl_cipher_iv_length($options['cipher']);
-		$key = openssl_random_pseudo_bytes($options['keyLength']);
-		$iv = openssl_random_pseudo_bytes($ivLength);
+		if (empty($options['key']) || empty($options['iv'])) {
+			$ivLength = openssl_cipher_iv_length($options['cipher']);
+			$key = openssl_random_pseudo_bytes($options['keyLength']);
+			$iv = openssl_random_pseudo_bytes($ivLength);
+		} else {
+			$key = $options['key'];
+			$iv = $options['iv'];
+		}
 		$ciphertext = openssl_encrypt($document, $options['cipher'], $key, OPENSSL_RAW_DATA, $iv);
 		$data = $iv . $ciphertext;
 
@@ -115,7 +118,7 @@ class Lapis {
    	return $results;
    }
 
-   public static function docDecrypt($docData, $encDocKey, $privateKey) {
+   public static function docDecrypt($docData, $encDocKey, $privateKey, &$secret = null) {
    	if (is_string($docData)) {
    		$docData = json_decode($docData);
    	}
@@ -136,6 +139,12 @@ class Lapis {
 		$ciphertext = substr($data, $ivLength);
 
 		$document = openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+
+		// For updating of document without generating new keys
+		$secret = array(
+			'iv' => $iv,
+			'key' => $key
+		);
 
 		$docArray = json_decode($document, true);
 		if (!$docArray) {

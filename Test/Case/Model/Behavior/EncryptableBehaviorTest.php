@@ -177,6 +177,48 @@ class EncryptableBehaviorTest extends CakeTestCase {
 	}
 
 	public function testAbleToUpdate() {
+		$family = FixtureUtils::initFamily($this->Requester, 2);
+
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[1]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
+
+		$this->Book->requestAs = $family[0];
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertEquals(true, $book['Book']['available']);
+
+
+		$this->Book->requestAs = $family[1];
+		$this->Book->id = 1;
+		$result = $this->Book->save(array(
+			'title' => 'Updated title',
+			'available' => false,
+		));
+		$this->assertEquals(1, $result['Book']['id']);
+		$this->assertEquals('Updated title', $result['Book']['title']);
+		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
+		$this->assertFalse(array_key_exists('available', $result['Book']));
+
+		$this->Book->requestAs = $family[1];
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+		$this->assertEquals('Updated title', $book['Book']['title']);
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(false, $book['Book']['available']);
 	}
 
 	public function testAbleToDelete() {

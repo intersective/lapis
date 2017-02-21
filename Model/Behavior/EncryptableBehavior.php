@@ -24,7 +24,47 @@ class EncryptableBehavior extends ModelBehavior {
 	}
 
 	public function beforeSave(Model $Model, $options = array()) {
-		$vaults = $this->_getVaultPublicKeys($Model->saveFor);
+		$hasEncryption = false;
+		foreach ($Model->data[$Model->alias] as $field => $value) {
+			if (!empty($this->schema[$Model->alias][$field])) {
+				$hasEncryption = true;
+				break;
+			}
+		}
+		if (!$hasEncryption) {
+			return true; //  no encryption, no Lapis processing needed
+		}
+
+		// Update
+		$isUpdate = false;
+		if (!empty($Model->id)) {
+			$old = $Model->find('first', array(
+				'conditions' => array($Model->primaryKey => $Model->id),
+				'fields' => array($Model->primaryKey, $this->settings[$Model->alias]['column'])
+			));
+
+			if (!empty($old)) {
+				$isUpdate = true;
+			}
+
+			if ($hasEncryption) {
+				if (array_key_exists($this->settings[$Model->alias]['column'], $old[$Model->alias])) {
+					return false; // Encryption failed
+				}
+
+				foreach ($old[$Model->alias] as $field => $value) {
+					if (!isset($Model->data[$Model->alias][$field])) {
+						$Model->data[$Model->alias][$field] = $value;
+					}
+				}
+			}
+		}
+
+		if (!$isUpdate) {
+			$vaults = $this->_getVaultPublicKeys($Model->saveFor);
+		} else {
+			$vaults = $this->_getVaultPublicKeysForUpdate($this->_getModelID($Model->alias, $Model->id));
+		}
 
 		if (empty($vaults)) {
 			return false;
@@ -38,7 +78,13 @@ class EncryptableBehavior extends ModelBehavior {
 			}
 		}
 
-		$encRes = Lapis::docEncryptForMany($document, $vaults);
+		$encryptOptions = array();
+		if ($isUpdate && !empty($this->docSecret)) {
+			// Do not generate new doc key and iv for update
+			$encryptOptions['iv'] = $this->docSecret['iv'];
+			$encryptOptions['key'] = $this->docSecret['key'];
+		}
+		$encRes = Lapis::docEncryptForMany($document, $vaults, $encryptOptions);
 		$dockeys = $encRes['keys'];
 
 		$encDoc = $encRes;
@@ -53,7 +99,7 @@ class EncryptableBehavior extends ModelBehavior {
 	}
 
 	public function afterSave(Model $Model, $created, $options = array()) {
-		if (isset($Model->data[$Model->alias][$this->settings[$Model->alias]['column']])) {
+		if ($created && isset($Model->data[$Model->alias][$this->settings[$Model->alias]['column']])) {
 			$encDocJSONHash = sha1($Model->data[$Model->alias][$this->settings[$Model->alias]['column']]);
 			if (!isset($this->dockeys[$Model->alias][$encDocJSONHash])) {
 				throw new CakeException('Document keys not found after successful save');
@@ -218,6 +264,27 @@ class EncryptableBehavior extends ModelBehavior {
 	}
 
 	/**
+	 * Returns list of vault public keys, given model id
+	 */
+	protected function _getVaultPublicKeysForUpdate($modelID) {
+		$docVaults = ClassRegistry::init('Lapis.Document')->find('list', array(
+			'conditions' => array(
+				'model_id' => $modelID
+			),
+			'fields' => array('vault_id', 'vault_id')
+		));
+
+		if (empty($docVaults)) {
+			return false;
+		}
+
+		return ClassRegistry::init('Lapis.Requester')->find('list', array(
+			'conditions' => array('id' => array_keys($docVaults), 'vault_public_key IS NOT NULL'),
+			'fields' => array('id', 'vault_public_key'),
+		));
+	}
+
+	/**
 	 * Returns list of public keys to encrypt with
 	 * DEPRECATED
 	 */
@@ -263,7 +330,7 @@ class EncryptableBehavior extends ModelBehavior {
 			return false;
 		}
 
-		$document = Lapis::docDecrypt($encDoc, $documentKey, $vaultPrivate);
+		$document = Lapis::docDecrypt($encDoc, $documentKey, $vaultPrivate, $this->docSecret);
 		return $document;
  	}
 }
