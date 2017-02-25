@@ -127,7 +127,7 @@ class EncryptableBehavior extends ModelBehavior {
 	public function afterFind(Model $Model, $results, $primary = false) {
 		$docColumn = $this->settings[$Model->alias]['column'];
 		foreach ($results as $key => $row) {
-			if (array_key_exists($docColumn, $row[$Model->alias])) {
+			if (array_key_exists($Model->alias, $row) && array_key_exists($docColumn, $row[$Model->alias])) {
 				$docFields = false;
 				if (!empty($Model->requestAs)) {
 					$proceed = true;
@@ -188,6 +188,15 @@ class EncryptableBehavior extends ModelBehavior {
 			}
 		}
 		return $results;
+	}
+
+	/**
+	 * Remove document from vault
+	 */
+	public function afterDelete(Model $Model) {
+		ClassRegistry::init('Lapis.Document')->deleteAll(array(
+			'model_id' => $this->_getModelID($Model->alias, $Model->id),
+		));
 	}
 
 	protected function _handleType($value, $type = 'string') {

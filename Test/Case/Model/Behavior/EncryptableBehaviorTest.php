@@ -13,6 +13,8 @@ class EncryptableBehaviorTest extends CakeTestCase {
 	public function setUp() {
 		$this->Book = new Book();
 		$this->Requester = ClassRegistry::init('Lapis.Requester');
+		$this->Document = ClassRegistry::init('Lapis.Document');
+		$this->Accessor = ClassRegistry::init('Lapis.Accessor');
 	}
 
 	public function testAbleToSaveAndRetrieve() {
@@ -222,6 +224,44 @@ class EncryptableBehaviorTest extends CakeTestCase {
 	}
 
 	public function testAbleToDelete() {
+		$family = FixtureUtils::initFamily($this->Requester, 2);
+
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[1]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
+
+		$data['title'] = 'Second book';
+		$this->Book->create();
+		$this->Book->saveFor = $family[1]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(2, $result['Book']['id']);
+		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
+
+		$doc = $this->Document->find('first', array(
+			'fields' => array('id'),
+		));
+		$docID = $doc['Document']['id'];
+		$this->assertEquals(2, $this->Document->find('count'));
+
+		// No need to set any requesters (Lapis is not ACL)
+		$this->Book->delete(1);
+
+		$this->assertEquals(0, $this->Book->find('count', array(
+			'conditions' => array('Book.id' => 1),
+		)));
+		$this->assertEquals(1, $this->Document->find('count'));
+		$this->assertEquals(0, $this->Document->find('count', array(
+			'conditions' => array('id' => $docID)
+		)));
 	}
 
 }
