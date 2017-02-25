@@ -106,6 +106,7 @@ class EncryptableBehavior extends ModelBehavior {
 			}
 
 			$DocumentModel = ClassRegistry::init('Lapis.Document');
+			$docData = array();
 			foreach ($this->dockeys[$Model->alias][$encDocJSONHash] as $keyID => $docKey) {
 				$docData[] = array(
 					'model_id' => $this->_getModelID($Model->alias, $Model->id),
@@ -199,10 +200,80 @@ class EncryptableBehavior extends ModelBehavior {
 		));
 	}
 
+	/**
+	 * Obtains DocumentModel ID
+	 * @param  Model $Model
+	 * @param  integer/string $id Model row ID
+	 * @return string model_id for Document table
+	 */
 	public function getDocumentModelID(Model $Model, $id) {
 		return $this->_getModelID($Model->alias, $id);
 	}
 
+	/**
+	 * Move encrypted document from existing vault(s) as $requestAs to $newSaveFor
+	 * @param  Model $Model
+	 * @param  integer/string $id Model row ID
+	 * @param  array $requestAs Requester that is able to decrypt current document
+	 * @param  array/string $newSaveFor Array of requester IDs or a single requester ID to provide access to
+	 * @return bool Success
+	 */
+	public function moveEncryptedDocument(Model $Model, $id, $requestAs, $newSaveFor) {
+		$this->docSecret = false;
+		$originalModelRequestAs = $Model->requestAs; // For restore later
+
+		$Model->requestAs = $requestAs;
+		$data = $Model->find('first', array(
+			'conditions' => array($Model->primaryKey => $Model->id),
+			'fields' => array($Model->primaryKey, $this->settings[$Model->alias]['column'])
+		));
+		$Model->requestAs = $originalModelRequestAs;
+
+		if (empty($this->docSecret)) {
+			return false; // fails to decrypt
+		}
+
+		$DocumentModel = ClassRegistry::init('Lapis.Document');
+		$modelID = $this->_getModelID($Model->alias, $id);
+
+		$vaults = $this->_getVaultPublicKeys($newSaveFor);
+		if (empty($vaults)) {
+			return false;
+		}
+
+		$docData = array();
+		foreach ($vaults as $i => $publicKey) {
+			$key = Lapis::simplePublicEncrypt($this->docSecret['key'], $publicKey);
+			if ($key === false) {
+				return false;
+			}
+
+			$docData[] = array(
+				'model_id' => $modelID,
+				'vault_id' => $i,
+				'key' => $key
+			);
+		}
+
+		// Obtain old document IDs to be deleted after successful move
+		$oldDocumentIDs = $DocumentModel->find('list', array(
+			'conditions' => array('model_id' => $modelID),
+			'fields' => array('id', 'model_id'),
+		));
+		if (empty($oldDocumentIDs)) {
+			return false;
+		}
+		$oldDocumentIDs = array_keys($oldDocumentIDs);
+
+		if (!$DocumentModel->saveMany($docData)) {
+			return false;
+		}
+
+		// Save successful, delete docs from old vaults
+		return $DocumentModel->deleteAll(array(
+			'id' => $oldDocumentIDs
+		));
+	}
 
 	/**
 	 * Returns a model_id for Document table

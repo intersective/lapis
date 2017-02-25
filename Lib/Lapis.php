@@ -95,10 +95,11 @@ class Lapis {
 
 		$keys = array();
 		foreach ($publicKeys as $i => $publicKey) {
-			if (!openssl_public_encrypt($key, $encKey, $publicKey)) {
+			$keys[$i] = self::simplePublicEncrypt($key, $publicKey);
+
+			if ($keys[$i] === false) {
 				return false;
 			}
-			$keys[$i] = base64_encode($encKey);
 		}
 
 		return array(
@@ -151,5 +152,19 @@ class Lapis {
 			return $document;
 		}
 		return $docArray;
+   }
+
+   /**
+    * Simple public key encryption
+    * Note: this may fail if data is longer than what's supposed by the public key length, use docEncrypt() for most the safest public key encryption. This method is meant more for internal key handling use
+    * @param  string $data Data to be encrypted
+    * @param  mixed $publicKey Public key
+    * @return string Base64-encoded encryption result or false on failure.
+    */
+   public static function simplePublicEncrypt($data, $publicKey) {
+   	if (!openssl_public_encrypt($data, $crypted, $publicKey)) {
+			return false;
+		}
+		return base64_encode($crypted);
    }
 }

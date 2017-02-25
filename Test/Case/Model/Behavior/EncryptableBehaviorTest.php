@@ -261,7 +261,7 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		)));
 
 		// Multiple saveFor
-		$altFamily = FixtureUtils::initFamily($this->Requester, 2);//
+		$altFamily = FixtureUtils::initFamily($this->Requester, 2);
 
 		$this->Book->create();
 		$this->Book->saveFor = array($family[1]['id'], $altFamily[1]['id']);
@@ -283,6 +283,72 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		$this->assertEquals(0, $this->Document->find('count', array(
 			'conditions' => array('model_id' => $this->Book->getDocumentModelID(3)),
 		)));
+	}
+
+	public function testMoveEncryptedDocument() {
+		$family = FixtureUtils::initFamily($this->Requester, 2);
+		$altFamily = FixtureUtils::initFamily($this->Requester, 2);
+
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[1]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+
+		// Valid requesters
+		foreach ($family as $member) {
+			$this->Book->requestAs = array('id' => $member['id'], 'password' => $member['password']);
+			$book = $this->Book->find('first', array(
+				'conditions' => array('Book.id' => 1)
+			));
+
+			$this->assertEquals(1, $book['Book']['id']);
+			$this->assertEquals('Test book', $book['Book']['title']);
+			$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+			$this->assertEquals('John Doe', $book['Book']['author']);
+			$this->assertEquals(2462, $book['Book']['pages']);
+			$this->assertEquals(true, $book['Book']['available']);
+		}
+
+		// Move encrypted document key
+		$requestAs = array('id' => $family[1]['id'], 'password' => $family[1]['password']);
+		$newSaveFor = $altFamily[1]['id'];
+		$this->assertFalse($this->Book->moveEncryptedDocument(1, array('id' => $family[1]['id']), $newSaveFor));	 // unable to decrypt without password
+		$this->assertTrue($this->Book->moveEncryptedDocument(1, $requestAs, $newSaveFor));
+
+		// $family requesters are now invalid
+		foreach ($family as $member) {
+			$this->Book->requestAs = array('id' => $member['id'], 'password' => $member['password']);
+			$book = $this->Book->find('first', array(
+				'conditions' => array('Book.id' => 1)
+			));
+
+			$this->assertEquals(1, $book['Book']['id']);
+			$this->assertEquals('Test book', $book['Book']['title']);
+			$this->assertFalse(array_key_exists('author', $book['Book']));
+			$this->assertTrue(array_key_exists('encrypted', $book['Book']));
+		}
+
+		// $altFamily are now valid requesters
+		foreach ($altFamily as $member) {
+			$this->Book->requestAs = array('id' => $member['id'], 'password' => $member['password']);
+			$book = $this->Book->find('first', array(
+				'conditions' => array('Book.id' => 1)
+			));
+
+			$this->assertEquals(1, $book['Book']['id']);
+			$this->assertEquals('Test book', $book['Book']['title']);
+			$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+			$this->assertEquals('John Doe', $book['Book']['author']);
+			$this->assertEquals(2462, $book['Book']['pages']);
+			$this->assertEquals(true, $book['Book']['available']);
+		}
 	}
 
 }
