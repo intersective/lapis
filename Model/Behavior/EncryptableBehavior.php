@@ -199,6 +199,21 @@ class EncryptableBehavior extends ModelBehavior {
 		));
 	}
 
+	public function getDocumentModelID(Model $Model, $id) {
+		return $this->_getModelID($Model->alias, $id);
+	}
+
+
+	/**
+	 * Returns a model_id for Document table
+	 * @param  string $modelAlias Model name
+	 * @param  integer $id Model row ID
+	 * @return string model_id for Document table
+	 */
+	protected function _getModelID($modelAlias, $id) {
+		return sha1($this->settings[$modelAlias]['salt'] . $id);
+ 	}
+
 	protected function _handleType($value, $type = 'string') {
 		switch ($type) {
 			case 'boolean':
@@ -319,10 +334,6 @@ class EncryptableBehavior extends ModelBehavior {
 
 		return $keys;
 	}
-
-	protected function _getModelID($modelAlias, $id) {
-		return sha1($this->settings[$modelAlias]['salt'] . $id);
- 	}
 
  	/**
  	 * Decrypt a document given the following

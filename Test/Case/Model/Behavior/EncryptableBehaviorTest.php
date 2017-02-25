@@ -237,20 +237,17 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		$this->Book->saveFor = $family[1]['id'];
 		$result = $this->Book->save($data);
 		$this->assertEquals(1, $result['Book']['id']);
-		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
 
 		$data['title'] = 'Second book';
 		$this->Book->create();
 		$this->Book->saveFor = $family[1]['id'];
 		$result = $this->Book->save($data);
 		$this->assertEquals(2, $result['Book']['id']);
-		$this->assertTrue(array_key_exists('encrypted', $result['Book']));
 
-		$doc = $this->Document->find('first', array(
-			'fields' => array('id'),
-		));
-		$docID = $doc['Document']['id'];
 		$this->assertEquals(2, $this->Document->find('count'));
+		$this->assertEquals(1, $this->Document->find('count', array(
+			'conditions' => array('model_id' => $this->Book->getDocumentModelID(1)),
+		)));
 
 		// No need to set any requesters (Lapis is not ACL)
 		$this->Book->delete(1);
@@ -260,7 +257,31 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		)));
 		$this->assertEquals(1, $this->Document->find('count'));
 		$this->assertEquals(0, $this->Document->find('count', array(
-			'conditions' => array('id' => $docID)
+			'conditions' => array('model_id' => $this->Book->getDocumentModelID(1)),
+		)));
+
+		// Multiple saveFor
+		$altFamily = FixtureUtils::initFamily($this->Requester, 2);//
+
+		$this->Book->create();
+		$this->Book->saveFor = array($family[1]['id'], $altFamily[1]['id']);
+		$result = $this->Book->save($data);
+		$this->assertEquals(3, $result['Book']['id']);
+
+		$this->assertEquals(1, $this->Book->find('count', array(
+			'conditions' => array('Book.id' => 3),
+		)));
+		$this->assertEquals(2, $this->Document->find('count', array(
+			'conditions' => array('model_id' => $this->Book->getDocumentModelID(3)),
+		)));
+
+		$this->Book->delete(3);
+
+		$this->assertEquals(0, $this->Book->find('count', array(
+			'conditions' => array('Book.id' => 3),
+		)));
+		$this->assertEquals(0, $this->Document->find('count', array(
+			'conditions' => array('model_id' => $this->Book->getDocumentModelID(3)),
 		)));
 	}
 
