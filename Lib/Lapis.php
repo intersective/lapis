@@ -67,12 +67,10 @@ class Lapis {
 	 * @return array Array with the following elements:
 	 *     'cipher' => $cipher used, in plaintext
 	 *     'data' => Symmetrically encrypted string
-	 *     'key' => Public key-encrypted key for symmetric encryption
-	 *     'iv' => Public key-encrypted iv for symmetric encryption
 	 */
-	public static function docEncrypt($document, $publicKeys, $options = array()) {
+	public static function docEncryptForMany($document, $publicKeys, $options = array()) {
 		if (is_string($publicKeys)) {
-			return static::docEncryptForOne($document, $publicKeys, $options);
+			$publicKeys = array($publicKeys);
 		}
 
 		$options = array_merge(array(
@@ -84,18 +82,24 @@ class Lapis {
 			$document = json_encode($document);
 		}
 
-		$ivLength = openssl_cipher_iv_length($options['cipher']);
-		$key = openssl_random_pseudo_bytes($options['keyLength']);
-		$iv = openssl_random_pseudo_bytes($ivLength);
+		if (empty($options['key']) || empty($options['iv'])) {
+			$ivLength = openssl_cipher_iv_length($options['cipher']);
+			$key = openssl_random_pseudo_bytes($options['keyLength']);
+			$iv = openssl_random_pseudo_bytes($ivLength);
+		} else {
+			$key = $options['key'];
+			$iv = $options['iv'];
+		}
 		$ciphertext = openssl_encrypt($document, $options['cipher'], $key, OPENSSL_RAW_DATA, $iv);
 		$data = $iv . $ciphertext;
 
 		$keys = array();
 		foreach ($publicKeys as $i => $publicKey) {
-			if (!openssl_public_encrypt($key, $encKey, $publicKey)) {
+			$keys[$i] = static::simplePublicEncrypt($key, $publicKey);
+
+			if ($keys[$i] === false) {
 				return false;
 			}
-			$keys[$i] = base64_encode($encKey);
 		}
 
 		return array(
@@ -106,8 +110,8 @@ class Lapis {
 		);
    }
 
-   public static function docEncryptForOne($document, $publicKey, $options = array()) {
-   	$results = static::docEncrypt($document, array($publicKey), $options);
+   public static function docEncrypt($document, $publicKey, $options = array()) {
+   	$results = static::docEncryptForMany($document, array($publicKey), $options);
    	if (isset($results['keys'][0])) {
 	   	$results['key'] = $results['keys'][0];
 	   	unset($results['keys']);
@@ -115,7 +119,7 @@ class Lapis {
    	return $results;
    }
 
-   public static function docDecrypt($docData, $encDocKey, $privateKey) {
+   public static function docDecrypt($docData, $encDocKey, $privateKey, &$secret = null) {
    	if (is_string($docData)) {
    		$docData = json_decode($docData);
    	}
@@ -124,18 +128,57 @@ class Lapis {
    	$ivLength = openssl_cipher_iv_length($cipher);
    	$data = base64_decode($docData->data);
 
-		if (!openssl_private_decrypt($encDocKeyDecoded, $key, $privateKey)) {
-			return false;
-		}
+   	$key = static::simplePrivateDecrypt($encDocKeyDecoded, $privateKey);
+   	if ($key === false) {
+   		return false;
+   	}
+
 		$iv = substr($data, 0, $ivLength);
 		$ciphertext = substr($data, $ivLength);
 
 		$document = openssl_decrypt($ciphertext, $cipher, $key, OPENSSL_RAW_DATA, $iv);
+
+		// For updating of document without generating new keys
+		$secret = array(
+			'iv' => $iv,
+			'key' => $key
+		);
 
 		$docArray = json_decode($document, true);
 		if (!$docArray) {
 			return $document;
 		}
 		return $docArray;
+   }
+
+   /**
+    * Simple public key encryption
+    * Note: this may fail if data is longer than what's supposed by the public key length, use docEncrypt() for most the safest public key encryption. This method is meant more for internal key handling use
+    * @param  string $data Data to be encrypted
+    * @param  mixed $publicKey Public key
+    * @return mixed Base64-encoded encryption result or false on failure.
+    */
+   public static function simplePublicEncrypt($data, $publicKey) {
+   	if (!openssl_public_encrypt($data, $crypted, $publicKey)) {
+			return false;
+		}
+		return base64_encode($crypted);
+   }
+
+   /**
+    * Simple private key decryption
+    * @param  string $data Data to be decrypted
+    * @param  mixed $privateKey Plain text private key
+    * @return mixed Decryption result, or false on failure
+    */
+   public static function simplePrivateDecrypt($data, $privateKey) {
+   	try {
+			if (!openssl_private_decrypt($data, $result, $privateKey)) {
+				return false;
+			}
+		} catch (Exception $e) {
+			return false;
+		}
+		return $result;
    }
 }
