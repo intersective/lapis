@@ -351,4 +351,58 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		}
 	}
 
+	public function testRequesterChangesPassword() {
+		$family = FixtureUtils::initFamily($this->Requester, 2);
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[1]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+
+		$oldPassword = $family[0]['password'];
+
+		$this->Book->requestAs = array('id' => $family[0]['id'], 'password' => $oldPassword);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(true, $book['Book']['available']);
+
+		$newPassword = 'correct horse battery staple';
+		$this->assertTrue($this->Requester->changeIdentPassword($family[0]['id'], $oldPassword, $newPassword));
+
+		// Unable to use old password anymore
+		$this->Book->requestAs = array('id' => $family[0]['id'], 'password' => $oldPassword);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertTrue(array_key_exists('encrypted', $book['Book']));
+
+		// Try with new password
+		$this->Book->requestAs = array('id' => $family[0]['id'], 'password' => $newPassword);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(true, $book['Book']['available']);
+	}
 }

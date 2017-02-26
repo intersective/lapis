@@ -186,6 +186,34 @@ class Requester extends AppModel {
 	}
 
 	/**
+	 * Changes a requester's ident password
+	 * @param  string $id
+	 * @param  string $oldPassword
+	 * @param  string $newPassword
+	 * @return bool success
+	 */
+	public function changeIdentPassword($id, $oldPassword, $newPassword) {
+		$privateKey = $this->getPrivateKey(array(
+			'id' => $id,
+			'password' => $oldPassword
+		));
+		if ($privateKey === false) {
+			return false;
+		}
+
+		$data = array('Requester' => array(
+			'id' => $id,
+			'ident_private_key' => Lapis::pwEncrypt($privateKey, $newPassword)
+		));
+
+		$this->id = $id;
+		if ($this->save($data)) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Obtain the private key given $requestAs object
 	 * @param  array $requestAs can be in one of the following 3 forms:
 	 *    i. $this->Book->requestAs = array('id' => 2, 'unencrypted_key' => 'PEM_ENCODED_UNENCRYPTED_PRIVATE_KEY';  // Private key stored externally
