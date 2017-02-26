@@ -95,7 +95,7 @@ class Lapis {
 
 		$keys = array();
 		foreach ($publicKeys as $i => $publicKey) {
-			$keys[$i] = self::simplePublicEncrypt($key, $publicKey);
+			$keys[$i] = static::simplePublicEncrypt($key, $publicKey);
 
 			if ($keys[$i] === false) {
 				return false;
@@ -128,13 +128,10 @@ class Lapis {
    	$ivLength = openssl_cipher_iv_length($cipher);
    	$data = base64_decode($docData->data);
 
-   	try {
-			if (!openssl_private_decrypt($encDocKeyDecoded, $key, $privateKey)) {
-				return false;
-			}
-		} catch (Exception $e) {
-			return false;
-		}
+   	$key = static::simplePrivateDecrypt($encDocKeyDecoded, $privateKey);
+   	if ($key === false) {
+   		return false;
+   	}
 
 		$iv = substr($data, 0, $ivLength);
 		$ciphertext = substr($data, $ivLength);
@@ -159,12 +156,29 @@ class Lapis {
     * Note: this may fail if data is longer than what's supposed by the public key length, use docEncrypt() for most the safest public key encryption. This method is meant more for internal key handling use
     * @param  string $data Data to be encrypted
     * @param  mixed $publicKey Public key
-    * @return string Base64-encoded encryption result or false on failure.
+    * @return mixed Base64-encoded encryption result or false on failure.
     */
    public static function simplePublicEncrypt($data, $publicKey) {
    	if (!openssl_public_encrypt($data, $crypted, $publicKey)) {
 			return false;
 		}
 		return base64_encode($crypted);
+   }
+
+   /**
+    * Simple private key decryption
+    * @param  string $data Data to be decrypted
+    * @param  mixed $privateKey Plain text private key
+    * @return mixed Decryption result, or false on failure
+    */
+   public static function simplePrivateDecrypt($data, $privateKey) {
+   	try {
+			if (!openssl_private_decrypt($data, $result, $privateKey)) {
+				return false;
+			}
+		} catch (Exception $e) {
+			return false;
+		}
+		return $result;
    }
 }

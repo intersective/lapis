@@ -405,4 +405,119 @@ class EncryptableBehaviorTest extends CakeTestCase {
 		$this->assertEquals(2462, $book['Book']['pages']);
 		$this->assertEquals(true, $book['Book']['available']);
 	}
+
+	// For when requester loses his/her old password
+	public function testResetRequesterIdent() {
+		$family = FixtureUtils::initFamily($this->Requester, 3);
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[2]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+
+		foreach ($family as $member) {
+			$this->Book->requestAs = array('id' => $member['id'], 'password' => $member['password']);
+			$book = $this->Book->find('first', array(
+				'conditions' => array('Book.id' => 1)
+			));
+
+			$this->assertEquals(1, $book['Book']['id']);
+			$this->assertEquals('Test book', $book['Book']['title']);
+			$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+			$this->assertEquals('John Doe', $book['Book']['author']);
+			$this->assertEquals(2462, $book['Book']['pages']);
+			$this->assertEquals(true, $book['Book']['available']);
+		}
+
+		// Reset with direct parent
+		$newPassword = 'correct horse battery staple direct parent';
+
+		$success = $this->Requester->resetIdent($family[2]['id'], array('id' => $family[1]['id']), $newPassword); // no password
+		$this->assertFalse($success);
+
+		$success = $this->Requester->resetIdent($family[2]['id'], $family[1], $newPassword);
+		$this->assertTrue($success);
+
+		$this->Book->requestAs = $family[2];
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertTrue(array_key_exists('encrypted', $book['Book']));
+
+		$this->Book->requestAs = array('id' => $family[2]['id'], 'password' => $newPassword);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(true, $book['Book']['available']);
+
+		// Reset with indirect ancestor (non-parent)
+		$newPasswordFurtherAncestor = 'correct horse battery staple further ancestor';
+		$success = $this->Requester->resetIdent($family[2]['id'], $family[0], $newPasswordFurtherAncestor);
+		$this->assertTrue($success);
+
+		$this->Book->requestAs = $family[2];
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertEquals('Test book', $book['Book']['title']);
+		$this->assertTrue(array_key_exists('encrypted', $book['Book']));
+
+		$this->Book->requestAs = array('id' => $family[2]['id'], 'password' => $newPasswordFurtherAncestor);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(true, $book['Book']['available']);
+	}
+
+	public function testResetRequesterIdentMultipleVaults() {
+		$family = FixtureUtils::initFamily($this->Requester, 5);
+
+		$data = array(
+			'title' => 'Test book',
+			'author' => 'John Doe',
+			'pages' => 2462,
+			'available' => true,
+		);
+
+		$this->Book->create();
+		$this->Book->saveFor = $family[4]['id'];
+		$result = $this->Book->save($data);
+		$this->assertEquals(1, $result['Book']['id']);
+
+		$newPassword = 'multiple vaults multiple horses multiple staples';
+		$success = $this->Requester->resetIdent($family[2]['id'], $family[0], $newPassword);
+		$this->assertTrue($success);
+
+		$this->Book->requestAs = array('id' => $family[2]['id'], 'password' => $newPassword);
+		$book = $this->Book->find('first', array(
+			'conditions' => array('Book.id' => 1)
+		));
+
+		$this->assertEquals(1, $book['Book']['id']);
+		$this->assertFalse(array_key_exists('encrypted', $book['Book']));
+		$this->assertEquals('John Doe', $book['Book']['author']);
+		$this->assertEquals(2462, $book['Book']['pages']);
+		$this->assertEquals(true, $book['Book']['available']);
+	}
 }

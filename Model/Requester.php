@@ -9,6 +9,14 @@ class Requester extends AppModel {
 	public $tablePrefix = 'lapis_';
 	public $name = 'Requester';
 
+	public $generateDefaultOptions = array(
+		'keysize' => 4096,
+		'parent' => null,
+		'savePrivateToDb' => true,
+		'privateKeyLocation' => null,
+		'hasVault' => null,
+	);
+
 	public function __construct($id = false, $table = null, $ds = null) {
 		parent::__construct($id, $table, $ds);
 		$this->Accessor = ClassRegistry::init('Lapis.Accessor');
@@ -18,13 +26,7 @@ class Requester extends AppModel {
 	 * Generate RSA key pair
 	 */
 	public function generate($password, $options = array()) {
-		$options = array_merge(array(
-			'keysize' => 4096,
-			'parent' => null,
-			'savePrivateToDb' => true,
-			'privateKeyLocation' => null,
-			'hasVault' => null
-		), $options);
+		$options = array_merge($this->generateDefaultOptions, $options);
 		$options['password'] = $password;
 
 		if (is_null($options['hasVault'])) {
@@ -210,6 +212,79 @@ class Requester extends AppModel {
 		if ($this->save($data)) {
 			return true;
 		}
+		return false;
+	}
+
+	/**
+	 * Resets a requester's identity, due to loss of original password
+	 * @param  string $id  Target requester ID
+	 * @param  array $ancestorRequestAs $requestAs compatible with self::getPrivateKey($requestAs)
+	 * @param  string $newPassword Password for new requester's identity
+	 * @param  array See Lapis::generate()
+	 * @return bool success
+	 */
+	public function resetIdent($id, $ancestorRequestAs, $newPassword, $options = array()) {
+		if (empty($ancestorRequestAs['id'])){
+			return false;
+		}
+
+		$ancestorPivateKey = $this->getPrivateKey($ancestorRequestAs);
+		if ($ancestorPivateKey === false) {
+			return false;
+		}
+
+		$vaults = $this->Accessor->find('list', array(
+			'conditions' => array('requester_id' => $id),
+			'fields' => array('id', 'vault_id')
+		));
+
+		$ancestorAccesses = $this->Accessor->find('list', array(
+			'conditions' => array(
+				'vault_id' => array_values($vaults),
+				'requester_id' => $ancestorRequestAs['id']
+			),
+			'fields' => array('vault_id', 'key')
+		));
+
+		$vaultPrivates = $this->find('list', array(
+			'conditions' => array(
+				'id' => array_values($vaults),
+			),
+			'fields' => array('id', 'vault_private_key')
+		));
+
+		// Ensure that ancestor has access to all target requester's vaults
+		if (
+				count($vaults) !== count($ancestorAccesses) ||
+				count($vaults) !== count($vaultPrivates)
+			) {
+			return false;
+		}
+
+		$options = array_merge($this->generateDefaultOptions, $options);
+		$newIdent = Lapis::genKeyPair($options['keysize']);
+
+		foreach ($vaults as $accessorID => $vaultID) {
+			$vaultPrivate = Lapis::docDecrypt($vaultPrivates[$vaultID], $ancestorAccesses[$vaultID], $ancestorPivateKey, $secret);
+
+			$data[] = array(
+				'id' => $accessorID,
+				'key' => Lapis::simplePublicEncrypt($secret['key'], $newIdent['public'])
+			);
+		}
+
+		if ($this->Accessor->saveMany($data)) {
+			$this->id = $id;
+			if ($this->save(array('Requester' => array(
+				'id' => $id,
+				'ident_public_key' => $newIdent['public'],
+				'ident_private_key' =>Lapis::pwEncrypt($newIdent['private'], $newPassword),
+			)))) {
+				return true;
+			};
+			return false;
+		}
+
 		return false;
 	}
 
