@@ -1,0 +1,26 @@
+{
+    "name": "intersective/lapis",
+    "type": "cakephp-plugin",
+    "description": "CakePHP plugin providing highly secured user-level multi-tiered public-key database encryption.",
+    "homepage": "https://github.com/intersective/lapis/",
+    "keywords": ["cakephp", "lapis", "encryption", "database", "mysql", "postgresql", "public key", "security"],
+    "license": "MIT",
+    "authors": [
+    	{
+    		"name": "U-Zyn Chua",
+    		"email": "chua@uzyn.com"
+    	},
+		{
+    		"name": "Wes Sonnenreich",
+    		"email": "wes@intersective.com"
+    	}
+    ],
+    "require": {
+		"php": ">=5.5",
+		"cakephp/cakephp": "~3.2",
+		"composer/installers": "~1.0"
+    },
+    "extra": {
+    	"installer-name": "Lapis"
+    }
+}
