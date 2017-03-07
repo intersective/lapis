@@ -3,7 +3,7 @@ App::uses('AppShell', 'Console/Command');
 App::uses('Lapis', 'Lapis.Lib');
 
 class KeysShell extends AppShell {
-	public $uses = array('Lapis.Key');
+	public $uses = array('Lapis.Requester');
 
 	public function main() {
 		$this->out('Lapis keys generator.');
@@ -63,8 +63,8 @@ class KeysShell extends AppShell {
 		}
 
 		$this->out('Generating root public key pair...');
-		if ($this->Key->generate($options['password'], $options)) {
-			$this->out('Key pair generated and saved successfully with key ID: ' . $this->Key->getLastInsertID());
+		if ($this->Requester->generate($options['password'], $options)) {
+			$this->out('Key pair generated and saved successfully with key ID: ' . $this->Requester->getLastInsertID());
 
 			if (!$options['savePrivateToDb']) {
 				$this->out('Private key is written successfully to ' . $options['privateKeyLocation']);
