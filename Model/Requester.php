@@ -63,7 +63,11 @@ class Requester extends AppModel {
 
 		if ($ok) {
 			if (!$options['savePrivateToDb']) {
-				return file_put_contents($options['privateKeyLocation'], $keys['private']);
+				if (!empty($options['privateKeyLocation'])) {
+					return file_put_contents($options['privateKeyLocation'], $keys['private']);
+				} else { // return to caller
+					return $keys;
+				}
 			}
 			return true;
 		}
