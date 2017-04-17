@@ -62,14 +62,23 @@ class Requester extends AppModel {
 		}
 
 		if ($ok) {
+			$response = $keys;
+			unset($response['private']);
+			$response['id'] = $this->getLastInsertID();
+
 			if (!$options['savePrivateToDb']) {
 				if (!empty($options['privateKeyLocation'])) {
-					return file_put_contents($options['privateKeyLocation'], $keys['private']);
+					if (file_put_contents($options['privateKeyLocation'], $keys['private'])) {
+						$response['privateKeyLocation'] = $options['privateKeyLocation'];
+					} else {
+						$response['privateKeyLocation'] = false; // failed
+					}
 				} else { // return to caller
-					return $keys;
+					$response['private'] = $keys['private'];
 				}
 			}
-			return true;
+
+			return $response;
 		}
 
 		return false;
