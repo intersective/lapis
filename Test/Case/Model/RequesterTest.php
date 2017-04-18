@@ -13,8 +13,12 @@ class RequesterTest extends CakeTestCase {
 
 	public function testGenerate() {
 		$password = 'Passphrase to encrypt private key';
-		$this->assertTrue($this->Requester->generate($password));
+
+		$genResults = $this->Requester->generate($password);
+		$this->assertFalse(array_key_exists('private', $genResults));
+		$this->assertNotEmpty($genResults['public']);
 		$id = $this->Requester->getLastInsertID();
+		$this->assertEquals($id, $genResults['id']);
 
 		$requester = $this->Requester->find('first', array(
 			'conditions' => array('Requester.id' => $id)
@@ -29,10 +33,10 @@ class RequesterTest extends CakeTestCase {
 		$this->assertNull($requester['Requester']['vault_public_key']);
 
 		// No password
-		$this->assertTrue($this->Requester->generate(null, array(
+		$genResults = $this->Requester->generate(null, array(
 			'parent' => $id,
 			'keysize' => 1024
-		)));
+		));
 		$secondID = $this->Requester->getLastInsertID();
 		$this->assertNotEquals($id, $secondID);
 
@@ -49,10 +53,10 @@ class RequesterTest extends CakeTestCase {
 
 	public function testCreateVault() {
 		$password = sha1(rand());
-		$this->assertTrue($this->Requester->generate($password), array(
+		$genResults = $this->Requester->generate($password, array(
 			'hasVault' => false
 		));
-		$id = $this->Requester->getLastInsertID();
+		$id = $genResults['id'];
 		$requester = $this->Requester->find('first', array(
 			'conditions' => array('Requester.id' => $id)
 		));
